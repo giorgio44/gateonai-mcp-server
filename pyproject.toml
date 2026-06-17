@@ -1,0 +1,20 @@
+[project]
+name = "gateonai-mcp-server"
+version = "1.0.0"
+description = "MCP Server for GateOnAI — search 2,756+ verified AI tools, generate workflows, compare tools, and find GDPR-compliant AI solutions"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+dependencies = [
+    "mcp>=1.0.0",
+    "httpx>=0.27.0",
+]
+
+[project.urls]
+Homepage = "https://www.gateonai.com"
+Documentation = "https://www.gateonai.com/mcp"
+Repository = "https://github.com/giorgio44/gateonai-mcp-server"
+Issues = "https://github.com/giorgio44/gateonai-mcp-server/issues"
+
+[project.scripts]
+gateonai-mcp = "gateonai_mcp_server:main_sync"
