@@ -4,6 +4,7 @@
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://python.org)
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-gateonai.com-6c63ff)](https://www.gateonai.com)
+[![smithery badge](https://smithery.ai/badge/info-gateonai/gateonai-mcp-server)](https://smithery.ai/servers/info-gateonai/gateonai-mcp-server)
 
 **The official MCP server for [GateOnAI](https://www.gateonai.com) — Europe's AI Workflow Intelligence Platform.**
 
