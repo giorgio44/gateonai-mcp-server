@@ -20,6 +20,8 @@ logger = logging.getLogger("gateonai-mcp")
 # where the service sets GATEONAI_MCP_REDIS=1. Every tool works without it.
 REDIS_ENABLED = aioredis is not None and os.getenv("GATEONAI_MCP_REDIS", "") == "1"
 
+SERVER_VERSION = "1.1.0"  # bump here for every release (also pyproject.toml)
+
 BASE_URL = "https://www.gateonai.com"
 API_BASE = f"{BASE_URL}/api"
 TIMEOUT  = 15.0
@@ -51,7 +53,7 @@ def _fmt(t, v=False):
             lines.append(f"  Pros: {p}")
     return "\n".join(lines)
 
-server = Server("gateonai")
+server = Server("gateonai", version=SERVER_VERSION)
 
 # ── Usage analytics (George's own dashboard, not a third-party metering
 # service - built after declining an outside MCP-metering vendor pitch) ──
@@ -895,7 +897,7 @@ def _get_init_opts():
         capabilities.resources.subscribe = True
     return InitializationOptions(
         server_name="gateonai",
-        server_version="1.0.0",
+        server_version=SERVER_VERSION,
         capabilities=capabilities,
     )
 
