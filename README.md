@@ -1,6 +1,6 @@
 # GateOnAI MCP Server
 
-[![MCP](https://img.shields.io/badge/MCP-1.0-blue)](https://modelcontextprotocol.io)
+[![Release](https://img.shields.io/github/v/release/giorgio44/gateonai-mcp-server?label=release&color=6c63ff)](https://modelcontextprotocol.io)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://python.org)
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-gateonai.com-6c63ff)](https://www.gateonai.com)
@@ -11,7 +11,7 @@
 
 **The official MCP server for [GateOnAI](https://www.gateonai.com) — Europe's AI Workflow Intelligence Platform.**
 
-Connect Claude, Cursor, Windsurf, and any MCP-compatible AI client to a live database of **thousands of verified AI tools**, a compatibility graph of **4,093,220 tool connections**, and a prompt library of **thousands of curated prompts across dozens of professions**.
+Connect Claude, Cursor, Windsurf, and any MCP-compatible AI client to a live database of **thousands of verified AI tools**, a compatibility graph of **millions of tool connections**, and a prompt library of **thousands of curated prompts across dozens of professions**.
 
 No API key required. No registration. Works out of the box.
 
