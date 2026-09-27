@@ -399,7 +399,7 @@ async def list_tools():
             name="get_market_landscape",
             title="Get AI Category Market Landscape",
             annotations={"readOnlyHint": True, "openWorldHint": True, "destructiveHint": False, "idempotentHint": True},
-            description="A real, computed statistical snapshot of one GateOnAI category: live tool count, real GateOnAI Score distribution (average/median/min/max), real pricing-type breakdown, and current top-scoring tools. Every number is computed directly from live catalog data at request time - never a prediction, estimate, or industry-wide claim beyond what GateOnAI itself catalogs.",
+            description="A real, computed statistical snapshot of one GateOnAI category: live tool count, real GateOnAI Score distribution (average/median/min/max) and current top-scoring tools. Every number is computed directly from live catalog data at request time - never a prediction, estimate, or industry-wide claim beyond what GateOnAI itself catalogs.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -787,7 +787,6 @@ async def _call_tool_impl(name, arguments):
                 return CallToolResult(content=[TextContent(type="text",text=f"No active tools currently found in category \'{category}\' on GateOnAI.")])
 
             stats = d.get("score_stats") or {}
-            pricing = d.get("pricing_distribution", {})
             leaders = d.get("top_scoring_tools", [])
 
             lines = [
@@ -797,9 +796,6 @@ async def _call_tool_impl(name, arguments):
             if stats:
                 lines.append(f"**GateOnAI Score distribution:** avg {stats['average']}, median {stats['median']}, range {stats['min']}-{stats['max']}\n")
 
-            lines.append("**Pricing mix:**")
-            for ptype, count in pricing.items():
-                lines.append(f"- {ptype}: {count}")
             lines.append("")
 
             lines.append("**Current top-scoring tools:**")

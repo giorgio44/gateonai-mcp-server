@@ -33,7 +33,7 @@ No API key required. No registration. Works out of the box.
 | `find_ai_pipeline` | Find a real, structurally computed sequence of AI tools that gets you from one type of content to another - e.g. |
 | `whats_new` | See real AI tools recently added to GateOnAI - based on genuine addition timestamps, not a guess or a static list. |
 | `find_similar_by_philosophy` | Find AI tools that are conceptually or philosophically similar to a given tool - based on real semantic embedding similarity of each tool's name and tagline (MiniLM), not just shared category. |
-| `get_market_landscape` | A real, computed statistical snapshot of one GateOnAI category: live tool count, real GateOnAI Score distribution (average/median/min/max), real pricing-type breakdown, and current top-scoring tools. |
+| `get_market_landscape` | A real, computed statistical snapshot of one GateOnAI category: live tool count, real GateOnAI Score distribution (average/median/min/max) and current top-scoring tools. |
 | `match_prompt_to_task` | Given a free-text description of a task (e.g. |
 | `get_workflow_template` | Get one of GateOnAI's thousands of pre-built, ready-made AI workflows for a specific profession - a deterministic, ordered sequence of steps each matched to a real tool by category and GateOnAI Score, regenerated live fr |
 | `build_workflow_board` | Turn a goal described in plain language into a shareable GateOnAI Workbench board: real tools from the GateOnAI catalog, connected step by step when they form a workflow. |
@@ -256,7 +256,7 @@ Find AI tools that are conceptually or philosophically similar to a given tool -
 
 ### `get_market_landscape`
 
-A real, computed statistical snapshot of one GateOnAI category: live tool count, real GateOnAI Score distribution (average/median/min/max), real pricing-type breakdown, and current top-scoring tools. Every number is computed directly from live catalog data at request time - never a prediction, estimate, or industry-wide claim beyond what GateOnAI itself catalogs.
+A real, computed statistical snapshot of one GateOnAI category: live tool count, real GateOnAI Score distribution (average/median/min/max) and current top-scoring tools. Every number is computed directly from live catalog data at request time - never a prediction, estimate, or industry-wide claim beyond what GateOnAI itself catalogs.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
