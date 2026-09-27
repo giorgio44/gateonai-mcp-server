@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.1 - 2026-09-27
+
+### Changed
+- `analyze_ai_stack` no longer reports pricing. As a precaution, analyses and notifications never make claims about third-party pricing; tool listings still show the catalog's pricing label only.
+
 ## 1.1.0 - 2026-09-26
 
 ### Added

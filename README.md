@@ -37,7 +37,7 @@ No API key required. No registration. Works out of the box.
 | `match_prompt_to_task` | Given a free-text description of a task (e.g. |
 | `get_workflow_template` | Get one of GateOnAI's thousands of pre-built, ready-made AI workflows for a specific profession - a deterministic, ordered sequence of steps each matched to a real tool by category and GateOnAI Score, regenerated live fr |
 | `build_workflow_board` | Turn a goal described in plain language into a shareable GateOnAI Workbench board: real tools from the GateOnAI catalog, connected step by step when they form a workflow. |
-| `analyze_ai_stack` | Automated observations about a set of AI tools (2-40 GateOnAI tool slugs): tools not currently listed, category overlaps, data connections found in GateOnAI's IO-compatibility graph, and pricing-model mix. |
+| `analyze_ai_stack` | Automated observations about a set of AI tools (2-40 GateOnAI tool slugs): tools not currently listed, category overlaps and data connections found in GateOnAI's IO-compatibility graph. |
 
 ## Installation
 
@@ -289,7 +289,7 @@ Turn a goal described in plain language into a shareable GateOnAI Workbench boar
 
 ### `analyze_ai_stack`
 
-Automated observations about a set of AI tools (2-40 GateOnAI tool slugs): tools not currently listed, category overlaps, data connections found in GateOnAI's IO-compatibility graph, and pricing-model mix. Observations from GateOnAI data only - not recommendations and not judgments about any provider.
+Automated observations about a set of AI tools (2-40 GateOnAI tool slugs): tools not currently listed, category overlaps and data connections found in GateOnAI's IO-compatibility graph. Observations from GateOnAI data only - not recommendations and not judgments about any provider.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|

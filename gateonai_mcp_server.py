@@ -20,7 +20,7 @@ logger = logging.getLogger("gateonai-mcp")
 # where the service sets GATEONAI_MCP_REDIS=1. Every tool works without it.
 REDIS_ENABLED = aioredis is not None and os.getenv("GATEONAI_MCP_REDIS", "") == "1"
 
-SERVER_VERSION = "1.1.0"  # bump here for every release (also pyproject.toml)
+SERVER_VERSION = "1.1.1"  # bump here for every release (also pyproject.toml)
 
 BASE_URL = "https://www.gateonai.com"
 API_BASE = f"{BASE_URL}/api"
@@ -452,7 +452,7 @@ async def list_tools():
             name="analyze_ai_stack",
             title="Analyze AI Tool Stack",
             annotations={"readOnlyHint": True, "openWorldHint": True, "destructiveHint": False, "idempotentHint": True},
-            description="Automated observations about a set of AI tools (2-40 GateOnAI tool slugs): tools not currently listed, category overlaps, data connections found in GateOnAI's IO-compatibility graph, and pricing-model mix. Observations from GateOnAI data only - not recommendations and not judgments about any provider.",
+            description="Automated observations about a set of AI tools (2-40 GateOnAI tool slugs): tools not currently listed, category overlaps and data connections found in GateOnAI's IO-compatibility graph. Observations from GateOnAI data only - not recommendations and not judgments about any provider.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -564,8 +564,6 @@ async def _call_tool_impl(name, arguments):
                 for e in edges:
                     lines.append(f"- {names.get(e['from'], e['from'])} → {names.get(e['to'], e['to'])} ({', '.join((e.get('shared_types') or [])[:3])})")
                 lines.append("_A missing connection does not mean two tools cannot work together: the graph keeps only each tool's strongest links._")
-            pdist = d.get("pricing_distribution") or {}
-            if pdist: lines.append("\n**Pricing models:** " + ", ".join(f"{v} {k}" for k, v in pdist.items()) + " (types only - check each provider's pricing page)")
             lines.append(f"\n🔗 Explore and connect these tools visually: {BASE_URL}/workbench")
             lines.append(f"\n_Provided as is, for general information only, without any warranty; not professional or purchasing advice. Verify with each provider. Terms: {BASE_URL}/terms_")
             return CallToolResult(content=[TextContent(type="text", text="\n".join(lines))])
