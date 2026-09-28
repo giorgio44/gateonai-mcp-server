@@ -1,6 +1,6 @@
 import contextlib
 #!/usr/bin/env python3
-import asyncio, sys, os, logging, uuid, json, datetime
+import asyncio, sys, os, re, logging, uuid, json, datetime
 import httpx
 from mcp.server import Server
 from mcp.server.models import InitializationOptions
@@ -20,7 +20,23 @@ logger = logging.getLogger("gateonai-mcp")
 # where the service sets GATEONAI_MCP_REDIS=1. Every tool works without it.
 REDIS_ENABLED = aioredis is not None and os.getenv("GATEONAI_MCP_REDIS", "") == "1"
 
-SERVER_VERSION = "1.1.1"  # bump here for every release (also pyproject.toml)
+SERVER_VERSION = "1.2.0"
+
+# One typed output contract for every tool (2026-09-28). call_tool() fills structuredContent
+# from the final text in ONE place, so no tool can drift from it; the text content is unchanged
+# for clients that do not read structured output.
+OUTPUT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "tool": {"type": "string", "description": "Name of the tool that produced this result"},
+        "markdown": {"type": "string", "description": "The full result as Markdown (same as the text content), including GateOnAI's disclaimer"},
+        "links": {"type": "array", "items": {"type": "string"}, "description": "gateonai.com URLs referenced in the result, in order of appearance"},
+        "is_error": {"type": "boolean", "description": "True if the tool could not complete the request"},
+    },
+    "required": ["tool", "markdown", "links", "is_error"],
+    "additionalProperties": False,
+}
+_LINK_RE = re.compile(r"https://www\.gateonai\.com[^\s)\]>\"'`]*")  # bump here for every release (also pyproject.toml)
 
 BASE_URL = "https://www.gateonai.com"
 API_BASE = f"{BASE_URL}/api"
@@ -34,6 +50,13 @@ async def _get(path, params=None):
 
 async def _post(path, body):
     async with httpx.AsyncClient(timeout=TIMEOUT, headers=HEADERS) as c:
+        r = await c.post(f"{API_BASE}{path}", json=body)
+        r.raise_for_status(); return r.json()
+
+WORKFLOW_TIMEOUT = 45.0  # /workflow-ai/ plans steps with Groq for uncached goals; can exceed 15 s (2026-09-28)
+
+async def _post_slow(path, body):
+    async with httpx.AsyncClient(timeout=WORKFLOW_TIMEOUT, headers=HEADERS) as c:
         r = await c.post(f"{API_BASE}{path}", json=body)
         r.raise_for_status(); return r.json()
 
@@ -204,8 +227,7 @@ async def _redis_subscription_listener():
             logger.warning(f"MCP Redis listener error, retrying in 5s: {e}")
             await asyncio.sleep(5)
 
-@server.list_tools()
-async def list_tools():
+async def _list_tools_raw():
     # Fetch live site stats so the tool descriptions AI agents read never
     # go stale - fixed 2026-08-22 after finding hardcoded numbers here
     # (2,756 tools, 4,093,220 connections, 16,000 prompts across 45
@@ -463,6 +485,15 @@ async def list_tools():
         ),
     ])
 
+@server.list_tools()
+async def list_tools():
+    """Every tool declares the same output contract (OUTPUT_SCHEMA), filled in call_tool()."""
+    result = await _list_tools_raw()
+    for t in result.tools:
+        t.outputSchema = OUTPUT_SCHEMA
+    return result
+
+
 async def _call_tool_impl(name, arguments):
     try:
         if name == "search_ai_tools":
@@ -502,7 +533,7 @@ async def _call_tool_impl(name, arguments):
             for t in r: lines.append(_fmt(t)); lines.append("")
             return CallToolResult(content=[TextContent(type="text",text="\n".join(lines))])
         elif name == "get_ai_workflow":
-            d = await _post("/workflow-ai/", {"query":arguments.get("query","")})
+            d = await _post_slow("/workflow-ai/", {"query":arguments.get("query","")})
             tools=d.get("tools",[]); wflows=d.get("workflows",[]); prof=d.get("meta",{}).get("profession","your role")
             lines=[f"# AI Workflow: {(arguments.get('query') or prof)[:80]}\n"]
             src = wflows or tools
@@ -520,7 +551,7 @@ async def _call_tool_impl(name, arguments):
             goal = str(arguments.get("goal", "")).strip()[:400]
             if len(goal) < 8:
                 return CallToolResult(content=[TextContent(type="text", text="Please describe the goal in a bit more detail (at least a short sentence).")])
-            d = await _post("/workflow-ai/", {"query": goal})
+            d = await _post_slow("/workflow-ai/", {"query": goal})
             if d.get("needs_clarification"):
                 opts = ", ".join(o.get("label", "") for o in (d.get("clarification_options") or []))
                 return CallToolResult(content=[TextContent(type="text", text=f"The goal is too broad to build a workflow. {d.get('clarification_question', '')} Options: {opts}. Call build_workflow_board again with a more specific goal.")])
@@ -610,7 +641,7 @@ async def _call_tool_impl(name, arguments):
             return CallToolResult(content=[TextContent(type="text",text="\n".join(lines))])
         elif name == "get_prompts_for_profession":
             prof=arguments.get("profession","").lower().strip()
-            d=await _get(f"/prompts/profession/{prof}/",{"page_size":min(arguments.get("limit",5),20)})
+            d=await _get("/prompts/",{"profession":prof,"page_size":min(arguments.get("limit",5),20)})
             r=d.get("results",[])
             if not r: return CallToolResult(content=[TextContent(type="text",text=f"No prompts for '{prof}'.")])
             lines=[f"## ✍️ Prompts for {prof.replace('-',' ').title()}\n"]
@@ -846,10 +877,11 @@ async def _call_tool_impl(name, arguments):
             lines.append(f"🔗 {BASE_URL}/workflows/{prof}")
             return CallToolResult(content=[TextContent(type="text",text="\n".join(lines))])
         else:
-            return CallToolResult(content=[TextContent(type="text",text=f"Unknown tool: {name}")])
+            return CallToolResult(content=[TextContent(type="text",text=f"Unknown tool: {name}")], isError=True)
     except Exception as e:
         logger.error(f"{name} failed: {e}")
-        return CallToolResult(content=[TextContent(type="text",text=f"Error: {e}")])
+        msg = str(e) or ("the GateOnAI API did not respond in time, please try again" if isinstance(e, httpx.TimeoutException) else type(e).__name__)
+        return CallToolResult(content=[TextContent(type="text", text=f"Error: {msg}")], isError=True)
 
 # GateOnAI data/scores are independent editorial assessment, not a
 # guarantee or certification - this notice is embedded directly in every
@@ -877,6 +909,10 @@ async def call_tool(name, arguments):
                 block.text = block.text + _DISCLAIMER
     except Exception as e:
         logger.error(f"failed to append disclaimer: {e}")
+    text = "\n".join(b.text for b in result.content if getattr(b, "type", None) == "text")
+    links = [u.rstrip(".,;:_*") for u in _LINK_RE.findall(text)]
+    result.structuredContent = {"tool": name, "markdown": text, "links": list(dict.fromkeys(links))[:50],
+                                "is_error": bool(getattr(result, "isError", False))}
     return result
 
 def _get_init_opts():

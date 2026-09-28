@@ -39,6 +39,17 @@ No API key required. No registration. Works out of the box.
 | `build_workflow_board` | Turn a goal described in plain language into a shareable GateOnAI Workbench board: real tools from the GateOnAI catalog, connected step by step when they form a workflow. |
 | `analyze_ai_stack` | Automated observations about a set of AI tools (2-40 GateOnAI tool slugs): tools not currently listed, category overlaps and data connections found in GateOnAI's IO-compatibility graph. |
 
+## Structured output
+
+Every tool declares the same `outputSchema` and returns `structuredContent`:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `tool` | string | Name of the tool that produced the result |
+| `markdown` | string | The full result as Markdown (same as the text content) |
+| `links` | array of string | gateonai.com URLs referenced in the result |
+| `is_error` | boolean | True if the tool could not complete the request |
+
 ## Installation
 
 ### Prerequisites
@@ -294,6 +305,13 @@ Automated observations about a set of AI tools (2-40 GateOnAI tool slugs): tools
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `tool_slugs` | array of string | ✅ | GateOnAI tool slugs, e.g. ['chatgpt', 'elevenlabs', 'opus-clip'] (slugs appear in search results and tool URLs) |
+
+## Docker
+
+```bash
+docker build -t gateonai-mcp .
+docker run -i --rm gateonai-mcp
+```
 
 ## Transport
 

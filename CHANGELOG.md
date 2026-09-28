@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.2.0 - 2026-09-28
+
+### Added
+- Structured output on all 17 tools: every tool declares an `outputSchema` and returns `structuredContent` with `tool`, `markdown`, `links` and `is_error` (the text content is unchanged for older clients).
+- `Dockerfile` (runs the stdio server; no API key, Redis or configuration needed) and `glama.json`.
+
+### Fixed
+- `get_prompts_for_profession` called an API route that no longer existed.
+- Failures are now flagged with `isError`, with a readable message (timeouts used to return an empty error).
+- Workflow tools (`get_ai_workflow`, `build_workflow_board`) wait up to 45 s for goal planning on new requests.
+
 ## 1.1.1 - 2026-09-27
 
 ### Changed
