@@ -20,7 +20,7 @@ logger = logging.getLogger("gateonai-mcp")
 # where the service sets GATEONAI_MCP_REDIS=1. Every tool works without it.
 REDIS_ENABLED = aioredis is not None and os.getenv("GATEONAI_MCP_REDIS", "") == "1"
 
-SERVER_VERSION = "1.3.0"
+SERVER_VERSION = "1.3.1"
 
 # One typed output contract for every tool (2026-09-28). call_tool() fills structuredContent
 # from the final text in ONE place, so no tool can drift from it; the text content is unchanged
@@ -259,7 +259,7 @@ async def _list_tools_raw():
                 "type": "object",
                 "properties": {
                     "query": {"type": "string", "description": "Search term — tool name, use case, or description. Examples: 'video editing', 'code assistant', 'ChatGPT alternatives'"},
-                    "category": {"type": "string", "description": "Filter by category slug. Examples: 'writing', 'coding', 'image-generation', 'video', 'marketing'"},
+                    "category": {"type": "string", "description": "Filter by category slug. Examples: 'writing-assistant', 'development', 'image-generation', 'video-creation', 'marketing'"},
                     "pricing": {"type": "string", "enum": ["free", "freemium", "paid", "free_trial"], "description": "Filter by pricing model: free, freemium, paid, or free_trial"},
                     "gdpr_only": {"type": "boolean", "description": "Set to true to return only GDPR-compliant tools suitable for European businesses"},
                     "eu_hosted_only": {"type": "boolean", "description": "Set to true to return only tools hosted on EU infrastructure"},
@@ -290,7 +290,7 @@ async def _list_tools_raw():
                 "type": "object",
                 "properties": {
                     "tool1_slug": {"type": "string", "description": "URL slug of the first tool to compare. Examples: 'chatgpt', 'claude', 'midjourney', 'jasper'"},
-                    "tool2_slug": {"type": "string", "description": "URL slug of the second tool to compare. Examples: 'gemini', 'dall-e', 'copy-ai', 'notion-ai'"}
+                    "tool2_slug": {"type": "string", "description": "URL slug of the second tool to compare. Examples: 'google-gemini', 'dall-e-3', 'elevenlabs', 'notion'"}
                 },
                     "tool3_slug": {"type": "string", "description": "Optional third tool slug for a 3-way comparison (e.g. 'google-gemini')"},
                 "required": ["tool1_slug", "tool2_slug"]
@@ -304,7 +304,7 @@ async def _list_tools_raw():
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "slug": {"type": "string", "description": "URL slug of the AI tool. Examples: 'chatgpt', 'midjourney', 'notion-ai', 'github-copilot', 'claude'"}
+                    "slug": {"type": "string", "description": "URL slug of the AI tool. Examples: 'chatgpt', 'midjourney', 'notion', 'github-copilot', 'claude'"}
                 },
                 "required": ["slug"]
             },
@@ -330,7 +330,7 @@ async def _list_tools_raw():
                 "type": "object",
                 "properties": {
                     "standard": {"type": "string", "enum": ["gdpr", "eu_hosted"], "default": "gdpr", "description": "Compliance standard: 'gdpr' for GDPR-compliant tools, 'eu_hosted' for tools with EU-based infrastructure"},
-                    "category": {"type": "string", "description": "Optional category filter. Examples: 'writing', 'coding', 'marketing', 'legal'"},
+                    "category": {"type": "string", "description": "Optional category filter. Examples: 'writing-assistant', 'development', 'marketing', 'legal-ai'"},
                     "limit": {"type": "integer", "default": 10, "description": "Number of results to return (default: 10, max: 24)"}
                 }
             },

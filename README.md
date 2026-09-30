@@ -162,7 +162,7 @@ Search GateOnAI's database of thousands of verified AI tools. Find tools by name
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `query` | string | ✅ | Search term — tool name, use case, or description. Examples: 'video editing', 'code assistant', 'ChatGPT alternatives' |
-| `category` | string | ❌ | Filter by category slug. Examples: 'writing', 'coding', 'image-generation', 'video', 'marketing' |
+| `category` | string | ❌ | Filter by category slug. Examples: 'writing-assistant', 'development', 'image-generation', 'video-creation', 'marketing' |
 | `pricing` | string | ❌ | Filter by pricing model: free, freemium, paid, or free_trial |
 | `gdpr_only` | boolean | ❌ | Set to true to return only GDPR-compliant tools suitable for European businesses |
 | `eu_hosted_only` | boolean | ❌ | Set to true to return only tools hosted on EU infrastructure |
@@ -183,7 +183,7 @@ Compare two or three AI tools head-to-head. Returns pricing, features, GateOnAI 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `tool1_slug` | string | ✅ | URL slug of the first tool to compare. Examples: 'chatgpt', 'claude', 'midjourney', 'jasper' |
-| `tool2_slug` | string | ✅ | URL slug of the second tool to compare. Examples: 'gemini', 'dall-e', 'copy-ai', 'notion-ai' |
+| `tool2_slug` | string | ✅ | URL slug of the second tool to compare. Examples: 'google-gemini', 'dall-e-3', 'elevenlabs', 'notion' |
 
 ### `get_tool_details`
 
@@ -191,7 +191,7 @@ Get comprehensive details about a specific AI tool by its URL slug. Returns full
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `slug` | string | ✅ | URL slug of the AI tool. Examples: 'chatgpt', 'midjourney', 'notion-ai', 'github-copilot', 'claude' |
+| `slug` | string | ✅ | URL slug of the AI tool. Examples: 'chatgpt', 'midjourney', 'notion', 'github-copilot', 'claude' |
 
 ### `get_trending_tools`
 
@@ -208,7 +208,7 @@ Find AI tools that are GDPR-compliant or EU-hosted. Essential for European busin
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `standard` | string | ❌ | Compliance standard: 'gdpr' for GDPR-compliant tools, 'eu_hosted' for tools with EU-based infrastructure |
-| `category` | string | ❌ | Optional category filter. Examples: 'writing', 'coding', 'marketing', 'legal' |
+| `category` | string | ❌ | Optional category filter. Examples: 'writing-assistant', 'development', 'marketing', 'legal-ai' |
 | `limit` | integer | ❌ | Number of results to return (default: 10, max: 24) |
 
 ### `get_prompts_for_profession`

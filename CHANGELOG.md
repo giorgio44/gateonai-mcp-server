@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.1 - 2026-09-30
+
+### Fixed
+- 11 example values in tool parameter descriptions did not exist in GateOnAI (e.g. `gemini` instead of `google-gemini`, category `writing` instead of `writing-assistant`), so AI clients copying them got errors. All 53 examples are now verified against live data.
+
 ## 1.3.0 - 2026-09-29
 
 ### Added
