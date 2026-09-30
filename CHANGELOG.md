@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.3.0 - 2026-09-29
+
+### Added
+- `compare_ai_tools` accepts an optional `tool3_slug` for 3-way comparisons (same data as gateonai.com/compare/a/b/c).
+- `get_workflow_template` resolves free-text professions to one of 2,800+ templates (e.g. "marketer" -> "Email Marketer"), with a helpful message when nothing matches.
+
+### Fixed
+- `search_ai_tools` could time out: it now skips the site's AI-written explanations (faster, and AI clients explain results themselves). The first search after a server restart is also much faster.
+
 ## 1.2.0 - 2026-09-28
 
 ### Added

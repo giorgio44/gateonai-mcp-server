@@ -23,11 +23,11 @@ No API key required. No registration. Works out of the box.
 |------|-------------|
 | `search_ai_tools` | Search GateOnAI's database of thousands of verified AI tools. |
 | `get_ai_workflow` | Generate a step-by-step AI workflow for any profession, role, or business task. |
-| `compare_ai_tools` | Compare two AI tools head-to-head. |
+| `compare_ai_tools` | Compare two or three AI tools head-to-head. |
 | `get_tool_details` | Get comprehensive details about a specific AI tool by its URL slug. |
 | `get_trending_tools` | Get the currently trending AI tools on GateOnAI based on real user engagement data. |
 | `get_eu_gdpr_tools` | Find AI tools that are GDPR-compliant or EU-hosted. |
-| `get_prompts_for_profession` | Get curated, ready-to-use AI prompts for a specific profession from GateOnAI's library of thousands of prompts across dozens of professions. |
+| `get_prompts_for_profession` | Get curated, ready-to-use AI prompts for a specific profession from GateOnAI's library of thousands of prompts across 58 professions. |
 | `get_site_stats` | Get current live statistics about the GateOnAI platform including total verified tools, categories, tool compatibility connections, and prompt library size. |
 | `get_compatible_tools` | Find AI tools that genuinely connect with a given tool, based on GateOnAI's IO-Compatibility Graph - a real, computed structural match between what one tool outputs and what another accepts as input (text, image, audio,  |
 | `find_ai_pipeline` | Find a real, structurally computed sequence of AI tools that gets you from one type of content to another - e.g. |
@@ -178,7 +178,7 @@ Generate a step-by-step AI workflow for any profession, role, or business task. 
 
 ### `compare_ai_tools`
 
-Compare two AI tools head-to-head. Returns pricing, features, GateOnAI scores, pros/cons, and a recommendation on which tool to choose.
+Compare two or three AI tools head-to-head. Returns pricing, features, GateOnAI scores, pros/cons, and a recommendation on which tool to choose.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -213,7 +213,7 @@ Find AI tools that are GDPR-compliant or EU-hosted. Essential for European busin
 
 ### `get_prompts_for_profession`
 
-Get curated, ready-to-use AI prompts for a specific profession from GateOnAI's library of thousands of prompts across dozens of professions. Works with ChatGPT, Claude, Gemini, and other LLMs.
+Get curated, ready-to-use AI prompts for a specific profession from GateOnAI's library of thousands of prompts across 58 professions. Works with ChatGPT, Claude, Gemini, and other LLMs.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|

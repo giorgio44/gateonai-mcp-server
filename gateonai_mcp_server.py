@@ -20,7 +20,7 @@ logger = logging.getLogger("gateonai-mcp")
 # where the service sets GATEONAI_MCP_REDIS=1. Every tool works without it.
 REDIS_ENABLED = aioredis is not None and os.getenv("GATEONAI_MCP_REDIS", "") == "1"
 
-SERVER_VERSION = "1.2.0"
+SERVER_VERSION = "1.3.0"
 
 # One typed output contract for every tool (2026-09-28). call_tool() fills structuredContent
 # from the final text in ONE place, so no tool can drift from it; the text content is unchanged
@@ -285,13 +285,14 @@ async def _list_tools_raw():
             name="compare_ai_tools",
             title="Compare AI Tools",
             annotations={"readOnlyHint": True, "openWorldHint": True, "destructiveHint": False, "idempotentHint": True},
-            description="Compare two AI tools head-to-head. Returns pricing, features, GateOnAI scores, pros/cons, and a recommendation on which tool to choose.",
+            description="Compare two or three AI tools head-to-head. Returns pricing, features, GateOnAI scores, pros/cons, and a recommendation on which tool to choose.",
             inputSchema={
                 "type": "object",
                 "properties": {
                     "tool1_slug": {"type": "string", "description": "URL slug of the first tool to compare. Examples: 'chatgpt', 'claude', 'midjourney', 'jasper'"},
                     "tool2_slug": {"type": "string", "description": "URL slug of the second tool to compare. Examples: 'gemini', 'dall-e', 'copy-ai', 'notion-ai'"}
                 },
+                    "tool3_slug": {"type": "string", "description": "Optional third tool slug for a 3-way comparison (e.g. 'google-gemini')"},
                 "required": ["tool1_slug", "tool2_slug"]
             },
         ),
@@ -494,6 +495,36 @@ async def list_tools():
     return result
 
 
+_WF_SLUGS = {"at": 0.0, "slugs": []}
+
+
+async def _resolve_workflow_template(prof):
+    """Free-text profession -> real template slug (2,800+ exist, e.g. 'marketer' -> 'digital-marketer').
+    Returns (data, slug), or (None, helpful message) when nothing matches. 2026-09-28."""
+    import time
+    prof = re.sub(r"[^a-z0-9]+", "-", str(prof or "").lower()).strip("-")
+    if prof:
+        try:
+            return await _get(f"/workflows/dynamic/{prof}/"), prof
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code != 404:
+                raise
+    if time.time() - _WF_SLUGS["at"] > 3600 or not _WF_SLUGS["slugs"]:
+        d = await _get("/workflows/dynamic/", {"page_size": 5000})
+        items = d.get("results") or d.get("workflows") or []
+        _WF_SLUGS.update(at=time.time(), slugs=[i.get("slug") for i in items if i.get("slug")])
+    words = [w for w in prof.split("-") if w]
+    cands = [sl for sl in _WF_SLUGS["slugs"] if words and all(w in sl for w in words)]
+    if not cands and words:
+        cands = [sl for sl in _WF_SLUGS["slugs"] if words[-1][:6] in sl]
+    if cands:
+        best = sorted(cands, key=len)[0]
+        return await _get(f"/workflows/dynamic/{best}/"), best
+    sample = ", ".join(_WF_SLUGS["slugs"][:15])
+    return None, (f"No workflow template matches '{prof}'. Use get_ai_workflow for a custom workflow, "
+                  f"or one of the {len(_WF_SLUGS['slugs']):,} template professions, e.g.: {sample}")
+
+
 async def _call_tool_impl(name, arguments):
     try:
         if name == "search_ai_tools":
@@ -523,7 +554,7 @@ async def _call_tool_impl(name, arguments):
                 count = d.get("count", len(r))
                 mode_note = ""
             else:
-                d = await _post("/semantic-search/", {"query": query})
+                d = await _post("/semantic-search/", {"query": query, "explain": False})
                 r = (d.get("results") or [])[:limit]
                 count = len(r)
                 mode_note = " (semantic match)"
@@ -600,6 +631,15 @@ async def _call_tool_impl(name, arguments):
             return CallToolResult(content=[TextContent(type="text", text="\n".join(lines))])
         elif name == "compare_ai_tools":
             s1=arguments.get("tool1_slug","").lower().strip(); s2=arguments.get("tool2_slug","").lower().strip()
+            s3 = str(arguments.get("tool3_slug") or "").lower().strip()
+            if s3:  # 3-way comparison, same data as gateonai.com/compare/a/b/c
+                d = await _get(f"/compare3/{s1}/{s2}/{s3}/")
+                ts = [d.get(k, {}) for k in ("tool1", "tool2", "tool3")]
+                lines = ["## " + " vs ".join(t.get("name", sl) for t, sl in zip(ts, (s1, s2, s3))) + "\n"]
+                for i, t in enumerate(ts, 1):
+                    lines.append(f"### Tool {i}\n{_fmt(t, True)}")
+                lines.append(f"\n🔗 {BASE_URL}/compare/{s1}/{s2}/{s3}")
+                return CallToolResult(content=[TextContent(type="text", text="\n".join(lines))])
             d=await _get(f"/compare/{s1}/{s2}/")
             t1=d.get("tool1",{}); t2=d.get("tool2",{})
             lines=[f"## {t1.get('name',s1)} vs {t2.get('name',s2)}\n### Tool 1\n{_fmt(t1,True)}\n### Tool 2\n{_fmt(t2,True)}"]
@@ -859,7 +899,9 @@ async def _call_tool_impl(name, arguments):
             return CallToolResult(content=[TextContent(type="text",text="\n".join(lines))])
         elif name == "get_workflow_template":
             prof = arguments.get("profession","").lower().strip()
-            d = await _get(f"/workflows/dynamic/{prof}/")
+            d, prof = await _resolve_workflow_template(prof)
+            if d is None:
+                return CallToolResult(content=[TextContent(type="text", text=prof)], isError=True)
             steps = d.get("steps", [])
             if not steps:
                 return CallToolResult(content=[TextContent(type="text",text=f"No pre-built workflow found for '{prof}'. Try get_ai_workflow with a free-text description instead, or browse {BASE_URL}/workflows for valid profession slugs.")])
