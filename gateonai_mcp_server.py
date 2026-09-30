@@ -20,7 +20,7 @@ logger = logging.getLogger("gateonai-mcp")
 # where the service sets GATEONAI_MCP_REDIS=1. Every tool works without it.
 REDIS_ENABLED = aioredis is not None and os.getenv("GATEONAI_MCP_REDIS", "") == "1"
 
-SERVER_VERSION = "1.3.1"
+SERVER_VERSION = "1.3.2"
 
 # One typed output contract for every tool (2026-09-28). call_tool() fills structuredContent
 # from the final text in ONE place, so no tool can drift from it; the text content is unchanged
@@ -290,9 +290,9 @@ async def _list_tools_raw():
                 "type": "object",
                 "properties": {
                     "tool1_slug": {"type": "string", "description": "URL slug of the first tool to compare. Examples: 'chatgpt', 'claude', 'midjourney', 'jasper'"},
-                    "tool2_slug": {"type": "string", "description": "URL slug of the second tool to compare. Examples: 'google-gemini', 'dall-e-3', 'elevenlabs', 'notion'"}
+                    "tool2_slug": {"type": "string", "description": "URL slug of the second tool to compare. Examples: 'google-gemini', 'dall-e-3', 'elevenlabs', 'notion'"},
+                    "tool3_slug": {"type": "string", "description": "Optional third tool slug for a 3-way comparison (e.g. 'perplexity')"},
                 },
-                    "tool3_slug": {"type": "string", "description": "Optional third tool slug for a 3-way comparison (e.g. 'google-gemini')"},
                 "required": ["tool1_slug", "tool2_slug"]
             },
         ),

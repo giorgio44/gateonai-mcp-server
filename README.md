@@ -184,6 +184,7 @@ Compare two or three AI tools head-to-head. Returns pricing, features, GateOnAI 
 |-----------|------|----------|-------------|
 | `tool1_slug` | string | ✅ | URL slug of the first tool to compare. Examples: 'chatgpt', 'claude', 'midjourney', 'jasper' |
 | `tool2_slug` | string | ✅ | URL slug of the second tool to compare. Examples: 'google-gemini', 'dall-e-3', 'elevenlabs', 'notion' |
+| `tool3_slug` | string | ❌ | Optional third tool slug for a 3-way comparison (e.g. 'perplexity') |
 
 ### `get_tool_details`
 

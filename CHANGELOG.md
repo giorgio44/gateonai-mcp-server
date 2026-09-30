@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.2 - 2026-09-30
+
+### Fixed
+- `compare_ai_tools`: the optional `tool3_slug` was declared outside the input schema's `properties`, so AI clients could not see the 3-way comparison option.
+
 ## 1.3.1 - 2026-09-30
 
 ### Fixed
