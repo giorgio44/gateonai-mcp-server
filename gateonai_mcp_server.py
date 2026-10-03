@@ -20,7 +20,7 @@ logger = logging.getLogger("gateonai-mcp")
 # where the service sets GATEONAI_MCP_REDIS=1. Every tool works without it.
 REDIS_ENABLED = aioredis is not None and os.getenv("GATEONAI_MCP_REDIS", "") == "1"
 
-SERVER_VERSION = "1.4.0"
+SERVER_VERSION = "1.4.1"
 
 # One typed output contract for every tool (2026-09-28). call_tool() fills structuredContent
 # from the final text in ONE place, so no tool can drift from it; the text content is unchanged
@@ -272,7 +272,7 @@ async def _list_tools_raw():
                     "query": {"type": "string", "description": "Search term — tool name, use case, or description. Examples: 'video editing', 'code assistant', 'ChatGPT alternatives'"},
                     "category": {"type": "string", "description": "Filter by category slug. Examples: 'writing-assistant', 'development', 'image-generation', 'video-creation', 'marketing'"},
                     "pricing": {"type": "string", "enum": ["free", "freemium", "paid", "free_trial"], "description": "Filter by pricing model: free, freemium, paid, or free_trial"},
-                    "gdpr_only": {"type": "boolean", "description": "Set to true to return only GDPR-compliant tools suitable for European businesses"},
+                    "gdpr_only": {"type": "boolean", "description": "Set to true to return only tools whose providers state GDPR compliance"},
                     "eu_hosted_only": {"type": "boolean", "description": "Set to true to return only tools hosted on EU infrastructure"},
                     "limit": {"type": "integer", "default": 10, "description": "Number of results to return (default: 10, max: 24)"}
                 },
@@ -336,7 +336,7 @@ async def _list_tools_raw():
             name="get_eu_gdpr_tools",
             title="Get EU and GDPR Tools",
             annotations={"readOnlyHint": True, "openWorldHint": True, "destructiveHint": False, "idempotentHint": True},
-            description="Find AI tools that are GDPR-compliant or EU-hosted. Essential for European businesses, healthcare, legal, and any use case requiring data sovereignty. All compliance data is manually verified by GateOnAI.",
+            description="Find AI tools that are GDPR-compliant or EU-hosted. Essential for European businesses, healthcare, legal, and any use case requiring data sovereignty. Compliance information reflects what each provider publishes - verify it before relying on it.",
             inputSchema={
                 "type": "object",
                 "properties": {

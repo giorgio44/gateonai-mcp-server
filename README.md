@@ -9,7 +9,7 @@
 ![AI tools](https://img.shields.io/badge/dynamic/json?color=6c63ff&url=https%3A%2F%2Fwww.gateonai.com%2Fapi%2Fhomepage%2F&query=%24.stats.tools_count&label=AI%20tools) ![Categories](https://img.shields.io/badge/dynamic/json?color=6c63ff&url=https%3A%2F%2Fwww.gateonai.com%2Fapi%2Fhomepage%2F&query=%24.stats.categories_count&label=categories) ![Connections](https://img.shields.io/badge/dynamic/json?color=6c63ff&url=https%3A%2F%2Fwww.gateonai.com%2Fapi%2Fhomepage%2F&query=%24.stats.connections_count&label=IO%20connections) ![Prompts](https://img.shields.io/badge/dynamic/json?color=6c63ff&url=https%3A%2F%2Fwww.gateonai.com%2Fapi%2Fprompts%2Fstats%2F&query=%24.total_prompts&label=prompts)
 
 
-**The official MCP server for [GateOnAI](https://www.gateonai.com) — Europe's AI Workflow Intelligence Platform.**
+**The official MCP server for [GateOnAI](https://www.gateonai.com) — the AI Decision Platform for Business.**
 
 Connect Claude, Cursor, Windsurf, and any MCP-compatible AI client to a live database of **thousands of verified AI tools**, a compatibility graph of **millions of tool connections**, and a prompt library of **thousands of curated prompts across dozens of professions**.
 
@@ -164,7 +164,7 @@ Search GateOnAI's database of thousands of verified AI tools. Find tools by name
 | `query` | string | ✅ | Search term — tool name, use case, or description. Examples: 'video editing', 'code assistant', 'ChatGPT alternatives' |
 | `category` | string | ❌ | Filter by category slug. Examples: 'writing-assistant', 'development', 'image-generation', 'video-creation', 'marketing' |
 | `pricing` | string | ❌ | Filter by pricing model: free, freemium, paid, or free_trial |
-| `gdpr_only` | boolean | ❌ | Set to true to return only GDPR-compliant tools suitable for European businesses |
+| `gdpr_only` | boolean | ❌ | Set to true to return only tools whose providers state GDPR compliance |
 | `eu_hosted_only` | boolean | ❌ | Set to true to return only tools hosted on EU infrastructure |
 | `limit` | integer | ❌ | Number of results to return (default: 10, max: 24) |
 
@@ -204,7 +204,7 @@ Get the currently trending AI tools on GateOnAI based on real user engagement da
 
 ### `get_eu_gdpr_tools`
 
-Find AI tools that are GDPR-compliant or EU-hosted. Essential for European businesses, healthcare, legal, and any use case requiring data sovereignty. All compliance data is manually verified by GateOnAI.
+Find AI tools that are GDPR-compliant or EU-hosted. Essential for European businesses, healthcare, legal, and any use case requiring data sovereignty. Compliance information reflects what each provider publishes - verify it before relying on it.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -334,7 +334,7 @@ GateOnAI's public API is open and does not require authentication. The MCP serve
 
 ## About GateOnAI
 
-[GateOnAI](https://www.gateonai.com) is Europe's AI Workflow Intelligence Platform — a curated directory of thousands of verified AI tools, with a focus on GDPR compliance, EU-hosted solutions, and practical AI workflows for professionals.
+[GateOnAI](https://www.gateonai.com) is the AI Decision Platform for Business — a curated directory of thousands of verified AI tools, with a focus on GDPR compliance, EU-hosted solutions, and practical AI workflows for professionals.
 
 - 🌐 Platform: [gateonai.com](https://www.gateonai.com)
 - 🤖 MCP Docs: [gateonai.com/mcp](https://www.gateonai.com/mcp)

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.4.1 - 2026-10-03
+
+### Changed
+- Compliance tool descriptions now say what the information is: what each provider publishes about GDPR compliance
+  and EU hosting (previously described as "manually verified by GateOnAI").
+- `gdpr_only` describes the filter precisely: tools whose providers state GDPR compliance.
+
 ## 1.4.0 - 2026-10-03
 
 ### Changed
