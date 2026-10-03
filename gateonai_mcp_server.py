@@ -1,6 +1,6 @@
 import contextlib
 #!/usr/bin/env python3
-import asyncio, sys, os, re, logging, uuid, json, datetime
+import asyncio, sys, os, re, logging, uuid, json, datetime, zlib, base64
 import httpx
 from mcp.server import Server
 from mcp.server.models import InitializationOptions
@@ -20,7 +20,7 @@ logger = logging.getLogger("gateonai-mcp")
 # where the service sets GATEONAI_MCP_REDIS=1. Every tool works without it.
 REDIS_ENABLED = aioredis is not None and os.getenv("GATEONAI_MCP_REDIS", "") == "1"
 
-SERVER_VERSION = "1.3.2"
+SERVER_VERSION = "1.4.0"
 
 # One typed output contract for every tool (2026-09-28). call_tool() fills structuredContent
 # from the final text in ONE place, so no tool can drift from it; the text content is unchanged
@@ -47,6 +47,17 @@ async def _get(path, params=None):
     async with httpx.AsyncClient(timeout=TIMEOUT, headers=HEADERS) as c:
         r = await c.get(f"{API_BASE}{path}", params=params or {})
         r.raise_for_status(); return r.json()
+
+def _board_share_link(title, steps, is_workflow):
+    """Share link that CONTAINS the board (2026-10-02; same v1 format as the website's utils/boardLink.js).
+    Nothing is stored on GateOnAI's servers, and the part after '#' is never sent to any server when opened."""
+    payload = {"v": 1, "t": title[:80],
+               "b": [[s["slug"], 80 + i * 300, 220, f"Step {i + 1}: {s.get('action_label') or s.get('name') or ''}"[:200]] for i, s in enumerate(steps)],
+               "c": [[i - 1, i] for i in range(1, len(steps))] if is_workflow else []}
+    c = zlib.compressobj(9, zlib.DEFLATED, -15)
+    raw = c.compress(json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode()) + c.flush()
+    return f"{BASE_URL}/workbench/view#b=z." + base64.urlsafe_b64encode(raw).decode().rstrip("=")
+
 
 async def _post(path, body):
     async with httpx.AsyncClient(timeout=TIMEOUT, headers=HEADERS) as c:
@@ -461,8 +472,8 @@ async def _list_tools_raw():
         Tool(
             name="build_workflow_board",
             title="Build AI Workflow Board",
-            annotations={"readOnlyHint": False, "openWorldHint": True, "destructiveHint": False, "idempotentHint": False},
-            description="Turn a goal described in plain language into a shareable GateOnAI Workbench board: real tools from the GateOnAI catalog, connected step by step when they form a workflow. Returns the steps and a public link the user can open, share or clone into their own Workbench (free, no account). Boards created this way are never indexed by search engines.",
+            annotations={"readOnlyHint": True, "openWorldHint": True, "destructiveHint": False, "idempotentHint": False},
+            description="Turn a goal described in plain language into a GateOnAI Workbench board: real tools from the GateOnAI catalog, connected step by step when they form a workflow. Returns the steps and a share link that contains the board itself - nothing is stored on GateOnAI's servers. The user can open the link, clone the board into their own Workbench and share it. Use when the user wants a ready-made, visual AI workflow they can open and edit.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -590,23 +601,15 @@ async def _call_tool_impl(name, arguments):
             if not steps:
                 return CallToolResult(content=[TextContent(type="text", text=f"No suitable tools were found in the GateOnAI catalog for: {goal}")])
             is_wf = d.get("is_workflow") is True
-            blocks = [{"id": f"b{i}", "x": 80 + i * 300, "y": 220, "tool_slug": s["slug"], "tool_name": s.get("name", s["slug"]),
-                       "tool_logo": s.get("logo_url") or "", "website_url": s.get("visit_url") or "", "pricing_type": s.get("pricing_type"),
-                       "category": None, "note": "", "groupId": None} for i, s in enumerate(steps)]
-            conns = [{"id": f"c{i}", "from": f"b{i-1}", "to": f"b{i}"} for i in range(1, len(blocks))] if is_wf else []
             title = (goal[0].upper() + goal[1:])[:80]
-            saved = await _post("/workbench/save/", {"blocks": blocks, "connections": conns, "groups": [], "notes": [],
-                                                     "checklists": [], "title": title, "source": "mcp"})
-            url = f"{BASE_URL}{saved.get('url', '')}" if saved.get("id") else ""
-            lines = [f"# Workflow board: {saved.get('title') or title}\n"]
+            url = _board_share_link(title, steps, is_wf)  # nothing is saved on the server
+            lines = [f"# Workflow board: {title}\n"]
             for i, s in enumerate(steps, 1):
                 lines.append(f"**Step {i}: {s.get('action_label') or s.get('name')}** - {s.get('name')}")
                 if s.get("why_text"): lines.append(f"  {s['why_text']}")
                 lines.append(f"  → {BASE_URL}/tools/{s['slug']}")
-            if url:
-                lines.append(f"\n🔗 Open, share or clone this board (free, no account): {url}")
-            else:
-                lines.append(f"\n(The board could not be saved right now. Build it interactively at {BASE_URL}/workbench)")
+            lines.append(f"\n🔗 Open or clone this board (free, no account). The board is contained in the link itself; "
+                         f"GateOnAI does not store it: {url}")
             lines.append(f"\n_Generated automatically from GateOnAI catalog data. Tool availability, features and pricing change often - verify with each provider. Terms: {BASE_URL}/terms_")
             return CallToolResult(content=[TextContent(type="text", text="\n".join(lines))])
         elif name == "analyze_ai_stack":

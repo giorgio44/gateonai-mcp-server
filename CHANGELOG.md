@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.4.0 - 2026-10-03
+
+### Changed
+- `build_workflow_board` no longer stores anything on GateOnAI's servers. It returns a share link that contains the
+  board itself (after the `#`, which browsers never send to any server). The user can open it, clone it into their own
+  Workbench and share it. Each step carries a short note, e.g. "Step 1: Transcribe audio".
+- `build_workflow_board` is now annotated `readOnlyHint: true`.
+
+### Notes
+- Boards created through earlier versions stay available until 30 days after they were created, then are deleted
+  automatically.
+
 ## 1.3.2 - 2026-09-30
 
 ### Fixed

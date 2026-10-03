@@ -36,7 +36,7 @@ No API key required. No registration. Works out of the box.
 | `get_market_landscape` | A real, computed statistical snapshot of one GateOnAI category: live tool count, real GateOnAI Score distribution (average/median/min/max) and current top-scoring tools. |
 | `match_prompt_to_task` | Given a free-text description of a task (e.g. |
 | `get_workflow_template` | Get one of GateOnAI's thousands of pre-built, ready-made AI workflows for a specific profession - a deterministic, ordered sequence of steps each matched to a real tool by category and GateOnAI Score, regenerated live fr |
-| `build_workflow_board` | Turn a goal described in plain language into a shareable GateOnAI Workbench board: real tools from the GateOnAI catalog, connected step by step when they form a workflow. |
+| `build_workflow_board` | Turn a goal described in plain language into a GateOnAI Workbench board: real tools from the GateOnAI catalog, connected step by step when they form a workflow. Returns a share link that contains the board; nothing is stored. |
 | `analyze_ai_stack` | Automated observations about a set of AI tools (2-40 GateOnAI tool slugs): tools not currently listed, category overlaps and data connections found in GateOnAI's IO-compatibility graph. |
 
 ## Structured output
@@ -293,7 +293,7 @@ Get one of GateOnAI's thousands of pre-built, ready-made AI workflows for a spec
 
 ### `build_workflow_board`
 
-Turn a goal described in plain language into a shareable GateOnAI Workbench board: real tools from the GateOnAI catalog, connected step by step when they form a workflow. Returns the steps and a public link the user can open, share or clone into their own Workbench (free, no account). Boards created this way are never indexed by search engines.
+Turn a goal described in plain language into a GateOnAI Workbench board: real tools from the GateOnAI catalog, connected step by step when they form a workflow. Returns the steps and a share link that contains the board itself - nothing is stored on GateOnAI's servers. The user can open the link, clone the board into their own Workbench (free, no account) and share it.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|

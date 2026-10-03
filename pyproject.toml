@@ -1,6 +1,6 @@
 ﻿[project]
 name = "gateonai-mcp-server"
-version = "1.3.2"
+version = "1.4.0"
 description = "MCP server for GateOnAI: search thousands of verified AI tools, build shareable AI workflow boards, analyze tool stacks, compare tools and find GDPR-compliant AI solutions"
 readme = "README.md"
 license = { text = "MIT" }
