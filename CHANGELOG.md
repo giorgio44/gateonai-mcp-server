@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.2 - 2026-10-05
+
+- Three ready-made prompts, shown by clients as one-click commands: `find_ai_tool` (task, budget), `build_ai_workflow` (goal, profession) and `compare_tools` (tools)
+- The server now advertises the prompts capability
+
 ## 1.4.1 - 2026-10-03
 
 ### Changed

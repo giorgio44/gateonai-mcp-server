@@ -20,7 +20,7 @@ logger = logging.getLogger("gateonai-mcp")
 # where the service sets GATEONAI_MCP_REDIS=1. Every tool works without it.
 REDIS_ENABLED = aioredis is not None and os.getenv("GATEONAI_MCP_REDIS", "") == "1"
 
-SERVER_VERSION = "1.4.1"
+SERVER_VERSION = "1.4.2"
 
 # One typed output contract for every tool (2026-09-28). call_tool() fills structuredContent
 # from the final text in ONE place, so no tool can drift from it; the text content is unchanged
@@ -496,6 +496,62 @@ async def _list_tools_raw():
             },
         ),
     ])
+
+# ── Prompts (1.4.2): ready-made starting points; clients show them as commands (e.g. "/" in Claude Desktop) ──
+from mcp.types import GetPromptResult, Prompt, PromptArgument, PromptMessage
+
+PROMPTS = {
+    "find_ai_tool": (
+        "Find the best AI tool for a task: search GateOnAI, compare the strongest candidates, recommend one.",
+        [PromptArgument(name="task", description="What you want to do, e.g. 'transcribe sales calls'", required=True),
+         PromptArgument(name="budget", description="Optional: free, freemium or paid", required=False)],
+    ),
+    "build_ai_workflow": (
+        "Turn a goal into a step-by-step AI workflow with one tool per step, plus a shareable board link.",
+        [PromptArgument(name="goal", description="What you want to achieve, e.g. 'launch a weekly podcast'", required=True),
+         PromptArgument(name="profession", description="Optional: your role, e.g. 'marketer'", required=False)],
+    ),
+    "compare_tools": (
+        "Compare specific AI tools side by side: pricing, strengths, and which fits which use case.",
+        [PromptArgument(name="tools", description="Two or three tool names, e.g. 'Claude, ChatGPT, Gemini'", required=True)],
+    ),
+}
+
+
+def _prompt_text(name, a):
+    if name == "find_ai_tool":
+        budget = f" My budget: {a['budget']}." if a.get("budget") else ""
+        return (f"I need an AI tool to: {a['task']}.{budget}\n\n"
+                "Use the GateOnAI tools: call search_ai_tools to find candidates, then compare_ai_tools on the two or "
+                "three strongest. Recommend one, explain why in two or three sentences, and give each tool's GateOnAI "
+                "link. If GDPR or EU hosting comes up, report only what the providers themselves state.")
+    if name == "build_ai_workflow":
+        role = f" I work as: {a['profession']}." if a.get("profession") else ""
+        return (f"Build a step-by-step AI workflow for this goal: {a['goal']}.{role}\n\n"
+                "Use get_ai_workflow to plan the steps with one tool per step, then build_workflow_board to give me a "
+                "shareable board link. Keep only the steps I actually need, and say what each step does.")
+    return (f"Compare these AI tools for me: {a['tools']}.\n\n"
+            "Use compare_ai_tools (and get_tool_details where you need more). Summarize pricing, main strengths and "
+            "limits, then tell me which one fits which use case. For GDPR or EU hosting, report only what the "
+            "providers themselves state.")
+
+
+@server.list_prompts()
+async def list_prompts():
+    return [Prompt(name=n, description=d, arguments=args) for n, (d, args) in PROMPTS.items()]
+
+
+@server.get_prompt()
+async def get_prompt(name, arguments):
+    if name not in PROMPTS:
+        raise ValueError(f"Unknown prompt: {name}")
+    a = {k: str(v).strip() for k, v in (arguments or {}).items() if v is not None and str(v).strip()}
+    missing = [p.name for p in PROMPTS[name][1] if p.required and p.name not in a]
+    if missing:
+        raise ValueError(f"Missing required argument(s): {', '.join(missing)}")
+    return GetPromptResult(description=PROMPTS[name][0], messages=[
+        PromptMessage(role="user", content=TextContent(type="text", text=_prompt_text(name, a)))])
+
 
 @server.list_tools()
 async def list_tools():

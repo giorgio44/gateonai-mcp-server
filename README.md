@@ -17,6 +17,16 @@ No API key required. No registration. Works out of the box.
 
 ---
 
+## Prompts
+
+Ready-made starting points; MCP clients show them as commands (for example with `/` in Claude Desktop).
+
+| Prompt | Arguments | What it does |
+|---|---|---|
+| `find_ai_tool` | `task`, optional `budget` | Searches, compares the strongest candidates and recommends one |
+| `build_ai_workflow` | `goal`, optional `profession` | Plans one tool per step and returns a shareable board link |
+| `compare_tools` | `tools` | Pricing, strengths and the best fit for each use case |
+
 ## Tools
 
 | Tool | Description |
