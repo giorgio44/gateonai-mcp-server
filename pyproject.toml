@@ -1,7 +1,7 @@
 ﻿[project]
 name = "gateonai-mcp-server"
 version = "1.4.2"
-description = "MCP server for GateOnAI: search thousands of verified AI tools, build shareable AI workflow boards, analyze tool stacks, compare tools and find GDPR-compliant AI solutions"
+description = "MCP server for GateOnAI: search thousands of listed AI tools, build shareable AI workflow boards, analyze tool stacks, compare tools and find tools whose providers publish GDPR or EU-hosting information"
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.10"

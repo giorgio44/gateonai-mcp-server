@@ -76,7 +76,7 @@ def _fmt(t, v=False):
     if t.get('tagline'): lines.append(f"  {t['tagline']}")
     if t.get('category_name'): lines.append(f"  Category: {t['category_name']}")
     if t.get('gateonai_score'): lines.append(f"  Score: {t['gateonai_score']}/100")
-    tags = " · ".join(filter(None,["✅ GDPR" if t.get('gdpr_compliant') else "","🇪🇺 EU" if t.get('eu_hosted') else ""]))
+    tags = " · ".join(filter(None,["GDPR info (provider page)" if t.get('gdpr_compliant') else "","EU hosting stated (provider)" if t.get('eu_hosted') else ""]))
     if tags: lines.append(f"  {tags}")
     slug = t.get('slug','')
     if slug: lines.append(f"  → {BASE_URL}/tools/{slug}")
@@ -107,7 +107,32 @@ async def _get_stats_redis():
         _stats_redis = aioredis.from_url("redis://127.0.0.1:6379/1")
     return _stats_redis
 
-async def _record_tool_call(name: str) -> None:
+def _client_label() -> str:
+    """2026-10-12: a short, non-personal label for the calling program ("claude-ai", "python-httpx"...), for
+    usage stats only. clientInfo.name if the client sent one, else the first word of the User-Agent. Cut at the
+    first / ( ; @ or space, only [a-z0-9._-], max 32 chars: never an IP, a full User-Agent or an e-mail."""
+    raw = ""
+    try:
+        ctx = server.request_context
+        cp = getattr(getattr(ctx, "session", None), "client_params", None)
+        info = getattr(cp, "clientInfo", None)
+        raw = (getattr(info, "name", "") or "").strip()
+        if not raw:
+            req = getattr(ctx, "request", None)
+            ua = (req.headers.get("user-agent", "") if req is not None else "") or ""
+            m = re.search(r"compatible;\s*([^;)]+)", ua, re.I)
+            raw = (m.group(1) if m else ua).strip()
+            prods = re.findall(r"([A-Za-z][A-Za-z0-9._-]*)/[0-9]", raw)
+            if len(prods) > 1 and prods[0].lower() == "python":  # "Python/3.11 aiohttp/3.14" -> aiohttp
+                raw = prods[1]
+    except Exception:
+        raw = ""
+    label = re.split(r"[/(;@\s]", raw.lower(), maxsplit=1)[0] if raw else ""
+    label = re.sub(r"[^a-z0-9._-]", "", label)[:32]
+    return label if label.strip("-._") else "no-user-agent"
+
+
+async def _record_tool_call(name: str, client: str = "unknown") -> None:
     if not REDIS_ENABLED:
         return
     """Fire-and-forget usage counter increment. Never raises - a stats
@@ -143,6 +168,10 @@ async def _record_tool_call(name: str) -> None:
         # Record first-seen / last-seen timestamps for this tool.
         now_iso = datetime.datetime.utcnow().isoformat()
         pipe.setnx(f"mcp:stats:first_seen:{name}", now_iso)
+        # 2026-10-12: which client made the call (short label only, see _client_label)
+        pipe.hincrby(f"mcp:stats:clients:daily:{today}", client, 1)
+        pipe.expire(f"mcp:stats:clients:daily:{today}", 90 * 86400)
+        pipe.hincrby(f"mcp:stats:clients:monthly:{month_key}", f"{client}|{name}", 1)
         pipe.set(f"mcp:stats:last_seen:{name}", now_iso)
         await pipe.execute()
     except Exception as e:
@@ -163,7 +192,7 @@ AVAILABLE_RESOURCES = [
         description=(
             "Live feed of AI tools newly approved on GateOnAI. Subscribe to "
             "this resource to receive a push notification the moment a new "
-            "tool passes editorial review (checked every 6 hours)."
+            "tool is approved on GateOnAI."
         ),
         mimeType="application/json",
     ),
@@ -238,42 +267,70 @@ async def _redis_subscription_listener():
             logger.warning(f"MCP Redis listener error, retrying in 5s: {e}")
             await asyncio.sleep(5)
 
+# ── Site figures (2026-10-16) ─────────────────────────────────────────────
+# Every figure shown by this server is read live from the GateOnAI API. If a call fails, the last value
+# actually read is shown with the date it was read; a figure never read since the server started is left
+# out. No numbers are written in the code (the old fallbacks 2,886 / 4,100,000 / 19,686 / 57 / 2,627 / 45
+# were from August and had drifted).
+_LAST = {}  # key -> (value, "YYYY-MM-DD" when it was read)
+
+
+async def _read_stats():
+    """Read the live figures and remember each one with its date. Returns the keys read in THIS call."""
+    fresh = set()
+    sources = [
+        ("/homepage/", [("tools", lambda d: d["stats"]["tools_count"]),
+                        ("connections", lambda d: d["stats"]["connections_count"]),
+                        ("categories", lambda d: d["stats"]["categories_count"])]),
+        ("/prompts/stats/", [("prompts", lambda d: d["total_prompts"]),
+                             ("professions", lambda d: d["total_professions"])]),
+        ("/workflows/dynamic/", [("workflows", lambda d: d["total"])]),
+    ]
+    for path, keys in sources:
+        try:
+            d = await _get(path)
+        except Exception:
+            continue
+        for key, read in keys:
+            try:
+                v = read(d)
+            except Exception:
+                continue
+            if isinstance(v, int) and not isinstance(v, bool) and v > 0:
+                _LAST[key] = (v, datetime.date.today().isoformat())
+                fresh.add(key)
+    return fresh
+
+
+def _fig(fresh, key):
+    """'2,870' (read now), '2,870 (as of 2026-10-16)' (last value read), or None (never read)."""
+    if key not in _LAST:
+        return None
+    v, day = _LAST[key]
+    return f"{v:,}" if key in fresh else f"{v:,} (as of {day})"
+
+
 async def _list_tools_raw():
-    # Fetch live site stats so the tool descriptions AI agents read never
-    # go stale - fixed 2026-08-22 after finding hardcoded numbers here
-    # (2,756 tools, 4,093,220 connections, 16,000 prompts across 45
-    # professions) that had already drifted from the real, current
-    # figures (2,886+ tools, 19,686+ prompts across 57 professions).
-    # Falls back to the last-known-good figures if the API call fails,
-    # rather than crashing tool discovery entirely.
-    try:
-        _home = await _get("/homepage/")
-        _pstats = await _get("/prompts/stats/")
-        tool_count = _home.get("stats", {}).get("tools_count", 2886)
-        connections_count = _home.get("stats", {}).get("connections_count", 4100000)
-        prompt_count = _pstats.get("total_prompts", 19686)
-        profession_count = _pstats.get("total_professions", 57)
-    except Exception:
-        tool_count, connections_count, prompt_count, profession_count = 2886, 4100000, 19686, 57
-    try:
-        _wflist = await _get("/workflows/dynamic/")
-        workflow_count = _wflist.get("total", 2627)
-    except Exception:
-        workflow_count = 2627
+    fresh = await _read_stats()
+
+    def N(key):  # "2,870 " or "" - for the descriptions below
+        f = _fig(fresh, key)
+        return f"{f} " if f else ""
+    _graph_note = f" The graph has {N('connections')}computed connections." if N('connections') else ""
     return ListToolsResult(tools=[
         Tool(
             name="search_ai_tools",
             title="Search AI Tools",
             annotations={"readOnlyHint": True, "openWorldHint": True, "destructiveHint": False, "idempotentHint": True},
-            description=f"Search GateOnAI's database of {tool_count:,}+ verified AI tools. Find tools by name, use case, category, pricing model, or GDPR compliance status. Returns tool names, descriptions, pricing, GateOnAI scores, and direct URLs.",
+            description=f"Search GateOnAI's database of {N('tools')}listed AI tools. Find tools by name, use case, category, pricing model, or GDPR info on the provider's page. Returns tool names, descriptions, pricing, GateOnAI scores, and direct URLs.",
             inputSchema={
                 "type": "object",
                 "properties": {
                     "query": {"type": "string", "description": "Search term — tool name, use case, or description. Examples: 'video editing', 'code assistant', 'ChatGPT alternatives'"},
                     "category": {"type": "string", "description": "Filter by category slug. Examples: 'writing-assistant', 'development', 'image-generation', 'video-creation', 'marketing'"},
                     "pricing": {"type": "string", "enum": ["free", "freemium", "paid", "free_trial"], "description": "Filter by pricing model: free, freemium, paid, or free_trial"},
-                    "gdpr_only": {"type": "boolean", "description": "Set to true to return only tools whose providers state GDPR compliance"},
-                    "eu_hosted_only": {"type": "boolean", "description": "Set to true to return only tools hosted on EU infrastructure"},
+                    "gdpr_only": {"type": "boolean", "description": "Set to true to return only tools whose provider pages refer to the GDPR"},
+                    "eu_hosted_only": {"type": "boolean", "description": "Set to true to return only tools whose providers state EU hosting"},
                     "limit": {"type": "integer", "default": 10, "description": "Number of results to return (default: 10, max: 24)"}
                 },
                 "required": ["query"]
@@ -283,7 +340,7 @@ async def _list_tools_raw():
             name="get_ai_workflow",
             title="Get AI Workflow",
             annotations={"readOnlyHint": True, "openWorldHint": True, "destructiveHint": False, "idempotentHint": True},
-            description=f"Generate a step-by-step AI workflow for any profession, role, or business task. Uses GateOnAI's compatibility graph of {connections_count:,} tool connections to recommend the optimal tool sequence.",
+            description=f"Generate a step-by-step AI workflow for any profession, role, or business task. Uses GateOnAI's compatibility graph of {N('connections')}computed tool connections to suggest a tool sequence.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -311,7 +368,7 @@ async def _list_tools_raw():
             name="get_tool_details",
             title="Get Tool Details",
             annotations={"readOnlyHint": True, "openWorldHint": True, "destructiveHint": False, "idempotentHint": True},
-            description="Get comprehensive details about a specific AI tool by its URL slug. Returns full description, pricing, GateOnAI score breakdown, pros/cons, integrations, GDPR status, and FAQ.",
+            description="Get comprehensive details about a specific AI tool by its URL slug. Returns full description, pricing, GateOnAI score breakdown, pros/cons, GDPR status, and FAQ.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -336,11 +393,11 @@ async def _list_tools_raw():
             name="get_eu_gdpr_tools",
             title="Get EU and GDPR Tools",
             annotations={"readOnlyHint": True, "openWorldHint": True, "destructiveHint": False, "idempotentHint": True},
-            description="Find AI tools that are GDPR-compliant or EU-hosted. Essential for European businesses, healthcare, legal, and any use case requiring data sovereignty. Compliance information reflects what each provider publishes - verify it before relying on it.",
+            description="Find AI tools whose provider pages refer to the GDPR or EU hosting. Essential for European businesses, healthcare, legal, and any use case requiring data sovereignty. Compliance information reflects what each provider publishes - verify it before relying on it.",
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "standard": {"type": "string", "enum": ["gdpr", "eu_hosted"], "default": "gdpr", "description": "Compliance standard: 'gdpr' for GDPR-compliant tools, 'eu_hosted' for tools with EU-based infrastructure"},
+                    "standard": {"type": "string", "enum": ["gdpr", "eu_hosted"], "default": "gdpr", "description": "Compliance standard: 'gdpr' for tools whose provider pages refer to the GDPR, 'eu_hosted' for tools whose providers state EU hosting"},
                     "category": {"type": "string", "description": "Optional category filter. Examples: 'writing-assistant', 'development', 'marketing', 'legal-ai'"},
                     "limit": {"type": "integer", "default": 10, "description": "Number of results to return (default: 10, max: 24)"}
                 }
@@ -350,7 +407,7 @@ async def _list_tools_raw():
             name="get_prompts_for_profession",
             title="Get Prompts for Profession",
             annotations={"readOnlyHint": True, "openWorldHint": True, "destructiveHint": False, "idempotentHint": True},
-            description=f"Get curated, ready-to-use AI prompts for a specific profession from GateOnAI's library of {prompt_count:,}+ prompts across {profession_count} professions. Works with ChatGPT, Claude, Gemini, and other LLMs.",
+            description=f"Get ready-to-use AI prompts for a specific profession from GateOnAI's library of {N('prompts')}prompts across {N('professions')}professions. Works with ChatGPT, Claude, Gemini, and other LLMs.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -364,7 +421,7 @@ async def _list_tools_raw():
             name="get_site_stats",
             title="Get Site Statistics",
             annotations={"readOnlyHint": True, "openWorldHint": False, "destructiveHint": False, "idempotentHint": True},
-            description="Get current live statistics about the GateOnAI platform including total verified tools, categories, tool compatibility connections, and prompt library size.",
+            description="Get current live statistics about the GateOnAI platform including total listed tools, categories, tool compatibility connections, and prompt library size.",
             inputSchema={
                 "type": "object",
                 "properties": {}
@@ -374,7 +431,7 @@ async def _list_tools_raw():
             name="get_compatible_tools",
             title="Get Compatible AI Tools",
             annotations={"readOnlyHint": True, "openWorldHint": True, "destructiveHint": False, "idempotentHint": True},
-            description=f"Find AI tools that genuinely connect with a given tool, based on GateOnAI's IO-Compatibility Graph - a real, computed structural match between what one tool outputs and what another accepts as input (text, image, audio, video, code, etc.), not a category-similarity guess. Answers questions like 'what tools work well with ChatGPT' or 'what can I feed ChatGPT's output into'. Backed by {connections_count:,}+ real computed connections across the platform.",
+            description=f"Find AI tools that may connect with a given tool, based on GateOnAI's IO-Compatibility Graph - computed automatically by matching the input/output content types (text, image, audio, video, code, etc.) that GateOnAI assigns to each tool. The tags are assigned automatically and can be wrong; connections are not tested. Answers questions like 'what tools work well with ChatGPT' or 'what can I feed ChatGPT's output into'.{_graph_note}",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -388,7 +445,7 @@ async def _list_tools_raw():
             name="find_ai_pipeline",
             title="Find AI Tool Pipeline (Input to Output)",
             annotations={"readOnlyHint": True, "openWorldHint": True, "destructiveHint": False, "idempotentHint": False},
-            description="Find a real, structurally computed sequence of AI tools that gets you from one type of content to another - e.g. audio to a finished blog post, or a single image to a full video. Powered by GateOnAI's IO-Compatibility Graph combined with a PostgreSQL recursive path-finding engine (not a guess, a template, or an LLM improvising) - each step is a real tool whose actual output type matches the next tool's actual input type, verified against real tagged data. Returns multiple ranked alternative pipelines, each scored on tool quality and path length, so you can compare a fast 2-step option against a more thorough 4-step one. Valid content types: text, image, audio, video, data, url, code, pdf, email, social_post, prompt, file.",
+            description="Find a computed sequence of AI tools that gets you from one type of content to another - e.g. audio to a finished blog post, or a single image to a full video. Powered by GateOnAI's IO-Compatibility Graph combined with a PostgreSQL recursive path-finding engine (not an LLM improvising) - each step is a listed tool whose tagged output type matches the next tool's tagged input type. The tags are assigned automatically and the pipelines are not tested. Returns multiple ranked alternative pipelines, each scored on tool quality and path length, so you can compare a fast 2-step option against a more thorough 4-step one. Valid content types: text, image, audio, video, data, url, code, pdf, email, social_post, prompt, file.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -446,7 +503,7 @@ async def _list_tools_raw():
             name="match_prompt_to_task",
             title="Match a Prompt to My Task",
             annotations={"readOnlyHint": True, "openWorldHint": True, "destructiveHint": False, "idempotentHint": False},
-            description="Given a free-text description of a task (e.g. 'write a cold email to a client'), finds the best-matching existing prompt(s) from GateOnAI's verified prompt library using real BM25 full-text search - not a semantic guess or an invented relevance score. Each result includes the actual prompt text, which tool it's designed for, and the profession it comes from.",
+            description="Given a free-text description of a task (e.g. 'write a cold email to a client'), finds the best-matching existing prompt(s) from GateOnAI's prompt library using real BM25 full-text search - not a semantic guess or an invented relevance score. Each result includes the actual prompt text, which tool it's designed for, and the profession it comes from.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -460,7 +517,7 @@ async def _list_tools_raw():
             name="get_workflow_template",
             title="Get Pre-Built Workflow Template",
             annotations={"readOnlyHint": True, "openWorldHint": True, "destructiveHint": False, "idempotentHint": True},
-            description=f"Get one of GateOnAI's {workflow_count:,}+ pre-built, ready-made AI workflows for a specific profession - a deterministic, ordered sequence of steps each matched to a real tool by category and GateOnAI Score, regenerated live from current tool data. Different from get_ai_workflow: this returns an existing, curated template for a known profession rather than generating a new custom one from free text - faster and more consistent for common roles.",
+            description=f"Get one of GateOnAI's {N('workflows')}pre-built, ready-made AI workflows for a specific profession - a deterministic, ordered sequence of steps each matched to a real tool by category and GateOnAI Score, regenerated live from current tool data. Different from get_ai_workflow: this returns an existing, pre-built template for a known profession rather than generating a new custom one from free text - faster and more consistent for common roles.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -730,8 +787,8 @@ async def _call_tool_impl(name, arguments):
         elif name == "get_eu_gdpr_tools":
             std=arguments.get("standard","gdpr")
             p={"ordering":"-gateonai_score","page_size":min(arguments.get("limit",10),24)}
-            if std=="eu_hosted": p["eu_hosted"]="true"; title="🇪🇺 EU-Hosted AI Tools"
-            else: p["gdpr_compliant"]="true"; title="🛡️ GDPR-Compliant AI Tools"
+            if std=="eu_hosted": p["eu_hosted"]="true"; title="🇪🇺 AI Tools Whose Providers State EU Hosting"
+            else: p["gdpr_compliant"]="true"; title="🛡️ AI Tools Whose Provider Pages Refer to the GDPR"
             if arguments.get("category"): p["category__slug"]=arguments["category"]
             d=await _get("/tools/",p); r=d.get("results",[])
             lines=[f"## {title} — {d.get('count',0)} found\n"]
@@ -751,36 +808,30 @@ async def _call_tool_impl(name, arguments):
             lines.append(f"\n🔗 {BASE_URL}/prompts/{prof}/")
             return CallToolResult(content=[TextContent(type="text",text="\n".join(lines))])
         elif name == "get_site_stats":
-            # Fixed 2026-08-22: this tool's entire purpose is live stats,
-            # but connections/prompts/GDPR/EU-hosted counts were hardcoded
-            # and had already drifted from reality (e.g. prompts showed
-            # 16,000 when the real figure was 19,686+). Now fetches every
-            # figure live; each field falls back independently if its own
-            # call fails, so one slow/broken sub-fetch can't blank the rest.
-            d = await _get("/homepage/"); s = d.get("stats", {})
-            try:
-                pstats = await _get("/prompts/stats/")
-                prompt_count = pstats.get("total_prompts", 19686)
-            except Exception:
-                prompt_count = 19686
+            # 2026-10-16: every figure is live; if a call fails, the last value read is shown with its date,
+            # and a figure never read is left out (no numbers written in the code).
+            fresh = await _read_stats()
+            stat_lines = []
+            for key, label in (("tools", "🔧 Tools"), ("categories", "📂 Categories"),
+                               ("connections", "🔗 Computed connections"), ("prompts", "✍️ Prompts")):
+                f = _fig(fresh, key)
+                if f:
+                    stat_lines.append(f"{label}: {f}")
             try:
                 gdpr = await _get("/tools/", {"gdpr_compliant": "true", "page_size": 1})
-                gdpr_count = gdpr.get("count", 1050)
+                gdpr_count = gdpr.get("count")
             except Exception:
-                gdpr_count = 1050
+                gdpr_count = None  # 2026-10-15: no invented number when the API is down
             try:
                 eu = await _get("/tools/", {"eu_hosted": "true", "page_size": 1})
-                eu_count = eu.get("count", 8)
+                eu_count = eu.get("count")
             except Exception:
-                eu_count = 8
+                eu_count = None  # 2026-10-15: no invented number when the API is down
             return CallToolResult(content=[TextContent(type="text",text="\n".join([
                 "## 📊 GateOnAI Statistics",
-                f"🔧 Tools: {s.get('tools_count', 2886):,}+",
-                f"📂 Categories: {s.get('categories_count', 45)}",
-                f"🔗 Connections: {s.get('connections_count', 4100000):,}+",
-                f"✍️ Prompts: {prompt_count:,}+",
-                f"🛡️ GDPR Tools: {gdpr_count:,}+",
-                f"🇪🇺 EU-Hosted: {eu_count}+",
+                *stat_lines,
+                *([f"🛡️ Providers stating GDPR: {gdpr_count:,}"] if gdpr_count is not None else []),
+                *([f"🇪🇺 EU hosting stated (provider): {eu_count:,}"] if eu_count is not None else []),
                 f"🌐 {BASE_URL}",
             ]))])
         elif name == "get_compatible_tools":
@@ -795,8 +846,8 @@ async def _call_tool_impl(name, arguments):
             if not edges:
                 return CallToolResult(content=[TextContent(type="text",text=f"No compatibility data found for '{slug}'. Check the slug is correct via search_ai_tools first.")])
             center_name = nodes.get(center, {}).get("name", slug)
-            lines = [f"## 🌐 Tools that genuinely connect with {center_name}",
-                     "(GateOnAI IO-Compatibility Graph — real input/output type matching, not a category guess)\n"]
+            lines = [f"## 🌐 Tools that may connect with {center_name}",
+                     "(GateOnAI IO-Compatibility Graph — computed from automatically assigned input/output tags; not tested)\n"]
             for e in edges:
                 other_slug = e["target"] if e["source"] == center else e["source"]
                 other = nodes.get(other_slug, {})
@@ -830,15 +881,15 @@ async def _call_tool_impl(name, arguments):
                 return CallToolResult(content=[TextContent(type="text",text=(
                     f"No computed pipeline found from '{start_type}' to '{goal_type}'"
                     + (" with the free_only filter applied" if free_only else "")
-                    + f". This graph currently has {graph_stats.get('edges', 0):,} real computed connections "
+                    + f". This graph currently has {graph_stats.get('edges', 0):,} computed connections "
                     f"across {graph_stats.get('nodes', 0):,} active tools — try a different max_steps value, "
-                    f"disable free_only, or explore {BASE_URL}/graph to see what's actually connected."
+                    f"disable free_only, or explore {BASE_URL}/graph to see the computed connections."
                 ))])
 
             lines = [
                 f"# 🔗 AI Pipeline: {start_type} → {goal_type}",
-                f"Computed from GateOnAI's real IO-Compatibility Graph ({graph_stats.get('edges',0):,} connections "
-                f"across {graph_stats.get('nodes',0):,} active tools) — not a guess or a template.",
+                f"Computed from GateOnAI's IO-Compatibility Graph ({graph_stats.get('edges',0):,} connections "
+                f"across {graph_stats.get('nodes',0):,} active tools), from automatically assigned input/output tags; not tested.",
                 f"Found {len(workflows)} ranked alternative{'s' if len(workflows) != 1 else ''}:\n",
             ]
             for i, wf in enumerate(workflows, 1):
@@ -904,7 +955,7 @@ async def _call_tool_impl(name, arguments):
                 lines.append(f"**{r['name']}** ({r.get('category_name','')}) — {r.get('tagline','')} [{r.get('pricing_type','?')}, score {r.get('gateonai_score',0)}/100, similarity {r.get('similarity',0)}]")
                 lines.append(f"  → {BASE_URL}/tools/{r['slug']}")
                 lines.append("")
-            lines.append(f"💡 For real structural input/output connections instead of meaning-based similarity, use get_compatible_tools.")
+            lines.append(f"💡 For connections computed from input/output tags instead of meaning-based similarity, use get_compatible_tools.")
             return CallToolResult(content=[TextContent(type="text",text="\n".join(lines))])
         elif name == "get_market_landscape":
             category = arguments.get("category","").lower().strip()
@@ -946,7 +997,7 @@ async def _call_tool_impl(name, arguments):
 
             results = d.get("results", [])
             if not results:
-                return CallToolResult(content=[TextContent(type="text",text=f"No closely matching verified prompt found for \'{task}\'. Try different wording, or browse the full library at {BASE_URL}/prompts/.")])
+                return CallToolResult(content=[TextContent(type="text",text=f"No closely matching prompt found for \'{task}\'. Try different wording, or browse the full library at {BASE_URL}/prompts/.")])
 
             lines = [f"# 📝 Prompts matching: \"{task}\"\n"]
             for r in results:
@@ -991,7 +1042,7 @@ async def _call_tool_impl(name, arguments):
 # processes, summarizes, or re-presents it to its own end user.
 _DISCLAIMER = (
     "\n\n---\n⚠️ GateOnAI data (scores, descriptions, categorisation) is "
-    "independent editorial assessment based on publicly available "
+    "independent, algorithmic assessment based on publicly available "
     "information at the time of scoring - not a guarantee, warranty, or "
     "certification. Verify independently before relying on it for any "
     "decision."
@@ -1002,7 +1053,7 @@ async def call_tool(name, arguments):
     # Record usage first (independent of whether the call itself
     # succeeds or fails below) - a failed call is still a real signal
     # that someone is actively using this tool.
-    asyncio.create_task(_record_tool_call(name))
+    asyncio.create_task(_record_tool_call(name, _client_label()))
     result = await _call_tool_impl(name, arguments)
     try:
         for block in result.content:

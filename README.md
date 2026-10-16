@@ -11,7 +11,7 @@
 
 **The official MCP server for [GateOnAI](https://www.gateonai.com) — the AI Decision Platform for Business.**
 
-Connect Claude, Cursor, Windsurf, and any MCP-compatible AI client to a live database of **thousands of verified AI tools**, a compatibility graph of **millions of tool connections**, and a prompt library of **thousands of curated prompts across dozens of professions**.
+Connect Claude, Cursor, Windsurf, and any MCP-compatible AI client to a live database of **thousands of listed AI tools**, a graph of **millions of computed tool connections** (from automatically assigned input/output tags; not tested), and a prompt library of **thousands of prompts across dozens of professions**.
 
 No API key required. No registration. Works out of the box.
 
@@ -31,22 +31,22 @@ Ready-made starting points; MCP clients show them as commands (for example with 
 
 | Tool | Description |
 |------|-------------|
-| `search_ai_tools` | Search GateOnAI's database of thousands of verified AI tools. |
+| `search_ai_tools` | Search GateOnAI's database of thousands of listed AI tools. |
 | `get_ai_workflow` | Generate a step-by-step AI workflow for any profession, role, or business task. |
 | `compare_ai_tools` | Compare two or three AI tools head-to-head. |
 | `get_tool_details` | Get comprehensive details about a specific AI tool by its URL slug. |
 | `get_trending_tools` | Get the currently trending AI tools on GateOnAI based on real user engagement data. |
-| `get_eu_gdpr_tools` | Find AI tools that are GDPR-compliant or EU-hosted. |
-| `get_prompts_for_profession` | Get curated, ready-to-use AI prompts for a specific profession from GateOnAI's library of thousands of prompts across 58 professions. |
-| `get_site_stats` | Get current live statistics about the GateOnAI platform including total verified tools, categories, tool compatibility connections, and prompt library size. |
-| `get_compatible_tools` | Find AI tools that genuinely connect with a given tool, based on GateOnAI's IO-Compatibility Graph - a real, computed structural match between what one tool outputs and what another accepts as input (text, image, audio,  |
-| `find_ai_pipeline` | Find a real, structurally computed sequence of AI tools that gets you from one type of content to another - e.g. |
-| `whats_new` | See real AI tools recently added to GateOnAI - based on genuine addition timestamps, not a guess or a static list. |
-| `find_similar_by_philosophy` | Find AI tools that are conceptually or philosophically similar to a given tool - based on real semantic embedding similarity of each tool's name and tagline (MiniLM), not just shared category. |
-| `get_market_landscape` | A real, computed statistical snapshot of one GateOnAI category: live tool count, real GateOnAI Score distribution (average/median/min/max) and current top-scoring tools. |
-| `match_prompt_to_task` | Given a free-text description of a task (e.g. |
-| `get_workflow_template` | Get one of GateOnAI's thousands of pre-built, ready-made AI workflows for a specific profession - a deterministic, ordered sequence of steps each matched to a real tool by category and GateOnAI Score, regenerated live fr |
-| `build_workflow_board` | Turn a goal described in plain language into a GateOnAI Workbench board: real tools from the GateOnAI catalog, connected step by step when they form a workflow. Returns a share link that contains the board; nothing is stored. |
+| `get_eu_gdpr_tools` | Find AI tools whose provider pages refer to the GDPR or state EU hosting. |
+| `get_prompts_for_profession` | Get ready-to-use AI prompts for a specific profession from GateOnAI's library of thousands of prompts across dozens of professions. |
+| `get_site_stats` | Get current live statistics about the GateOnAI platform including total listed tools, categories, tool compatibility connections, and prompt library size. |
+| `get_compatible_tools` | Find AI tools that may connect with a given tool, computed from automatically assigned input/output tags (not tested). |
+| `find_ai_pipeline` | Find a computed sequence of AI tools from one content type to another (e.g. audio to a blog post), from automatically assigned input/output tags (not tested). |
+| `whats_new` | See AI tools recently added to GateOnAI, based on the date each tool was added. |
+| `find_similar_by_philosophy` | Find AI tools that are conceptually or philosophically similar to a given tool - based on semantic embedding similarity of each tool's name and tagline (MiniLM), not just shared category. |
+| `get_market_landscape` | A computed statistical snapshot of one GateOnAI category: live tool count, GateOnAI Score distribution (average/median/min/max) and current top-scoring tools. |
+| `match_prompt_to_task` | Find the existing prompts that best match a free-text task description (BM25 full-text search). |
+| `get_workflow_template` | Get one of GateOnAI's thousands of pre-built, ready-made AI workflows for a specific profession - a deterministic, ordered sequence of steps each matched to a listed tool by category and GateOnAI Score, regenerated live fr |
+| `build_workflow_board` | Turn a goal described in plain language into a GateOnAI Workbench board: tools from the GateOnAI catalog, connected step by step when they form a workflow. Returns a share link that contains the board; nothing is stored. |
 | `analyze_ai_stack` | Automated observations about a set of AI tools (2-40 GateOnAI tool slugs): tools not currently listed, category overlaps and data connections found in GateOnAI's IO-compatibility graph. |
 
 ## Structured output
@@ -151,7 +151,7 @@ Once connected, ask your AI assistant naturally:
 "What AI tools are trending right now?"
 → Uses: get_trending_tools
 
-"Find GDPR-compliant AI tools for legal teams in Europe"
+"Find AI tools for legal teams whose providers state EU hosting"
 → Uses: get_eu_gdpr_tools
 
 "Give me 5 ready-to-use prompts for a marketing manager"
@@ -167,20 +167,20 @@ Once connected, ask your AI assistant naturally:
 
 ### `search_ai_tools`
 
-Search GateOnAI's database of thousands of verified AI tools. Find tools by name, use case, category, pricing model, or GDPR compliance status. Returns tool names, descriptions, pricing, GateOnAI scores, and direct URLs.
+Search GateOnAI's database of thousands of listed AI tools. Find tools by name, use case, category, pricing model, or GDPR info on the provider's page. Returns tool names, descriptions, pricing, GateOnAI scores, and direct URLs.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `query` | string | ✅ | Search term — tool name, use case, or description. Examples: 'video editing', 'code assistant', 'ChatGPT alternatives' |
 | `category` | string | ❌ | Filter by category slug. Examples: 'writing-assistant', 'development', 'image-generation', 'video-creation', 'marketing' |
 | `pricing` | string | ❌ | Filter by pricing model: free, freemium, paid, or free_trial |
-| `gdpr_only` | boolean | ❌ | Set to true to return only tools whose providers state GDPR compliance |
+| `gdpr_only` | boolean | ❌ | Set to true to return only tools whose provider pages refer to the GDPR |
 | `eu_hosted_only` | boolean | ❌ | Set to true to return only tools hosted on EU infrastructure |
 | `limit` | integer | ❌ | Number of results to return (default: 10, max: 24) |
 
 ### `get_ai_workflow`
 
-Generate a step-by-step AI workflow for any profession, role, or business task. Uses GateOnAI's compatibility graph of millions of tool connections to recommend the optimal tool sequence.
+Generate a step-by-step AI workflow for any profession, role, or business task. Uses GateOnAI's compatibility graph of computed tool connections to suggest a tool sequence.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -188,7 +188,7 @@ Generate a step-by-step AI workflow for any profession, role, or business task. 
 
 ### `compare_ai_tools`
 
-Compare two or three AI tools head-to-head. Returns pricing, features, GateOnAI scores, pros/cons, and a recommendation on which tool to choose.
+Compare two or three AI tools head-to-head. Returns pricing, features, GateOnAI scores and pros/cons side by side.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -214,17 +214,17 @@ Get the currently trending AI tools on GateOnAI based on real user engagement da
 
 ### `get_eu_gdpr_tools`
 
-Find AI tools that are GDPR-compliant or EU-hosted. Essential for European businesses, healthcare, legal, and any use case requiring data sovereignty. Compliance information reflects what each provider publishes - verify it before relying on it.
+Find AI tools whose provider pages refer to the GDPR or EU hosting. Essential for European businesses, healthcare, legal, and any use case requiring data sovereignty. Compliance information reflects what each provider publishes - verify it before relying on it.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `standard` | string | ❌ | Compliance standard: 'gdpr' for GDPR-compliant tools, 'eu_hosted' for tools with EU-based infrastructure |
+| `standard` | string | ❌ | Compliance standard: 'gdpr' for tools whose provider pages refer to the GDPR, 'eu_hosted' for tools whose providers state EU hosting |
 | `category` | string | ❌ | Optional category filter. Examples: 'writing-assistant', 'development', 'marketing', 'legal-ai' |
 | `limit` | integer | ❌ | Number of results to return (default: 10, max: 24) |
 
 ### `get_prompts_for_profession`
 
-Get curated, ready-to-use AI prompts for a specific profession from GateOnAI's library of thousands of prompts across 58 professions. Works with ChatGPT, Claude, Gemini, and other LLMs.
+Get ready-to-use AI prompts for a specific profession from GateOnAI's library of thousands of prompts across dozens of professions. Works with ChatGPT, Claude, Gemini, and other LLMs.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -233,13 +233,13 @@ Get curated, ready-to-use AI prompts for a specific profession from GateOnAI's l
 
 ### `get_site_stats`
 
-Get current live statistics about the GateOnAI platform including total verified tools, categories, tool compatibility connections, and prompt library size.
+Get current live statistics about the GateOnAI platform including total listed tools, categories, tool compatibility connections, and prompt library size.
 
 _No parameters._
 
 ### `get_compatible_tools`
 
-Find AI tools that genuinely connect with a given tool, based on GateOnAI's IO-Compatibility Graph - a real, computed structural match between what one tool outputs and what another accepts as input (text, image, audio, video, code, etc.), not a category-similarity guess. Answers questions like 'what tools work well with ChatGPT' or 'what can I feed ChatGPT's output into'. Backed by millions of real computed connections across the platform.
+Find AI tools that may connect with a given tool, based on GateOnAI's IO-Compatibility Graph - computed automatically by matching the input/output content types that GateOnAI assigns to each tool (text, image, audio, video, code, etc.). The tags are assigned automatically and can be wrong; connections are not tested. Answers questions like 'what tools work well with ChatGPT' or 'what can I feed ChatGPT's output into'.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -248,7 +248,7 @@ Find AI tools that genuinely connect with a given tool, based on GateOnAI's IO-C
 
 ### `find_ai_pipeline`
 
-Find a real, structurally computed sequence of AI tools that gets you from one type of content to another - e.g. audio to a finished blog post, or a single image to a full video. Powered by GateOnAI's IO-Compatibility Graph combined with a PostgreSQL recursive path-finding engine (not a guess, a template, or an LLM improvising) - each step is a real tool whose actual output type matches the next tool's actual input type, verified against real tagged data. Returns multiple ranked alternative pipelines, each scored on tool quality and path length, so you can compare a fast 2-step option against a more thorough 4-step one. Valid content types: text, image, audio, video, data, url, code, pdf, email, social_post, prompt, file.
+Find a computed sequence of AI tools that gets you from one type of content to another - e.g. audio to a finished blog post, or a single image to a full video. Powered by GateOnAI's IO-Compatibility Graph combined with a PostgreSQL recursive path-finding engine (not an LLM improvising) - each step is a listed tool whose tagged output type matches the next tool's tagged input type. The tags are assigned automatically and the pipelines are not tested. Returns multiple ranked alternative pipelines, each scored on tool quality and path length, so you can compare a fast 2-step option against a more thorough 4-step one. Valid content types: text, image, audio, video, data, url, code, pdf, email, social_post, prompt, file.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -260,7 +260,7 @@ Find a real, structurally computed sequence of AI tools that gets you from one t
 
 ### `whats_new`
 
-See real AI tools recently added to GateOnAI - based on genuine addition timestamps, not a guess or a static list. Optionally filter by category. Useful for staying current on new tool launches or checking what's new in a specific space (e.g. new AI Agents tools this week).
+See AI tools recently added to GateOnAI, based on the date each tool was added. Optionally filter by category. Useful for staying current on new tool launches or checking what's new in a specific space (e.g. new AI Agents tools this week).
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -269,7 +269,7 @@ See real AI tools recently added to GateOnAI - based on genuine addition timesta
 
 ### `find_similar_by_philosophy`
 
-Find AI tools that are conceptually or philosophically similar to a given tool - based on real semantic embedding similarity of each tool's name and tagline (MiniLM), not just shared category. Different from get_compatible_tools, which uses the structural IO-Compatibility Graph (real input/output matching) rather than meaning-based similarity. Use this for 'tools like X' questions, get_compatible_tools for 'what connects to X' questions.
+Find AI tools that are conceptually or philosophically similar to a given tool - based on semantic embedding similarity of each tool's name and tagline (MiniLM), not just shared category. Different from get_compatible_tools, which uses the structural IO-Compatibility Graph (real input/output matching) rather than meaning-based similarity. Use this for 'tools like X' questions, get_compatible_tools for 'what connects to X' questions.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -278,7 +278,7 @@ Find AI tools that are conceptually or philosophically similar to a given tool -
 
 ### `get_market_landscape`
 
-A real, computed statistical snapshot of one GateOnAI category: live tool count, real GateOnAI Score distribution (average/median/min/max) and current top-scoring tools. Every number is computed directly from live catalog data at request time - never a prediction, estimate, or industry-wide claim beyond what GateOnAI itself catalogs.
+A computed statistical snapshot of one GateOnAI category: live tool count, GateOnAI Score distribution (average/median/min/max) and current top-scoring tools. Every number is computed directly from live catalog data at request time - never a prediction, estimate, or industry-wide claim beyond what GateOnAI itself catalogs.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -286,7 +286,7 @@ A real, computed statistical snapshot of one GateOnAI category: live tool count,
 
 ### `match_prompt_to_task`
 
-Given a free-text description of a task (e.g. 'write a cold email to a client'), finds the best-matching existing prompt(s) from GateOnAI's verified prompt library using real BM25 full-text search - not a semantic guess or an invented relevance score. Each result includes the actual prompt text, which tool it's designed for, and the profession it comes from.
+Given a free-text description of a task (e.g. 'write a cold email to a client'), finds the best-matching existing prompt(s) from GateOnAI's prompt library using real BM25 full-text search - not a semantic guess or an invented relevance score. Each result includes the actual prompt text, which tool it's designed for, and the profession it comes from.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -295,7 +295,7 @@ Given a free-text description of a task (e.g. 'write a cold email to a client'),
 
 ### `get_workflow_template`
 
-Get one of GateOnAI's thousands of pre-built, ready-made AI workflows for a specific profession - a deterministic, ordered sequence of steps each matched to a real tool by category and GateOnAI Score, regenerated live from current tool data. Different from get_ai_workflow: this returns an existing, curated template for a known profession rather than generating a new custom one from free text - faster and more consistent for common roles.
+Get one of GateOnAI's thousands of pre-built, ready-made AI workflows for a specific profession - a deterministic, ordered sequence of steps each matched to a listed tool by category and GateOnAI Score, regenerated live from current tool data. Different from get_ai_workflow: this returns an existing, curated template for a known profession rather than generating a new custom one from free text - faster and more consistent for common roles.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -303,7 +303,7 @@ Get one of GateOnAI's thousands of pre-built, ready-made AI workflows for a spec
 
 ### `build_workflow_board`
 
-Turn a goal described in plain language into a GateOnAI Workbench board: real tools from the GateOnAI catalog, connected step by step when they form a workflow. Returns the steps and a share link that contains the board itself - nothing is stored on GateOnAI's servers. The user can open the link, clone the board into their own Workbench (free, no account) and share it.
+Turn a goal described in plain language into a GateOnAI Workbench board: tools from the GateOnAI catalog, connected step by step when they form a workflow. Returns the steps and a share link that contains the board itself - nothing is stored on GateOnAI's servers. The user can open the link, clone the board into their own Workbench (free, no account) and share it.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -344,7 +344,7 @@ GateOnAI's public API is open and does not require authentication. The MCP serve
 
 ## About GateOnAI
 
-[GateOnAI](https://www.gateonai.com) is the AI Decision Platform for Business — a curated directory of thousands of verified AI tools, with a focus on GDPR compliance, EU-hosted solutions, and practical AI workflows for professionals.
+[GateOnAI](https://www.gateonai.com) is the AI Decision Platform for Business — a directory of thousands of AI tools, sorted by an algorithmic GateOnAI Score, with the GDPR and EU-hosting information each provider publishes and practical AI workflows for professionals.
 
 - 🌐 Platform: [gateonai.com](https://www.gateonai.com)
 - 🤖 MCP Docs: [gateonai.com/mcp](https://www.gateonai.com/mcp)

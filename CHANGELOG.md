@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased - 2026-10-16 (same tools and arguments as 1.4.2; the hosted server at gateonai.com runs this code)
+
+### Changed
+- No numbers are written in the code any more. Every figure in the tool descriptions and in `get_site_stats` is read
+  live from the GateOnAI API; if a call fails, the last value read is shown with its date ("2,870 (as of
+  2026-10-16)"); a figure never read since the server started is left out.
+- Wording: "listed" instead of "verified" AI tools; GDPR/EU filters describe what they are (provider pages that refer
+  to the GDPR, providers that state EU hosting); compatibility and pipeline tools say the connections are computed
+  from automatically assigned input/output tags and are not tested; "suggest a tool sequence" instead of "optimal".
+- The disclaimer appended to every result says "independent, algorithmic assessment".
+
 ## 1.4.2 - 2026-10-05
 
 - Three ready-made prompts, shown by clients as one-click commands: `find_ai_tool` (task, budget), `build_ai_workflow` (goal, profession) and `compare_tools` (tools)
