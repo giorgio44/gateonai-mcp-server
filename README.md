@@ -4,7 +4,6 @@
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://python.org)
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-gateonai.com-6c63ff)](https://www.gateonai.com)
-[![smithery badge](https://smithery.ai/badge/info-gateonai/gateonai-mcp-server)](https://smithery.ai/servers/info-gateonai/gateonai-mcp-server)
 <!-- Live numbers: read from the GateOnAI API every time this page is viewed (never hardcoded) -->
 ![AI tools](https://img.shields.io/badge/dynamic/json?color=6c63ff&url=https%3A%2F%2Fwww.gateonai.com%2Fapi%2Fhomepage%2F&query=%24.stats.tools_count&label=AI%20tools) ![Categories](https://img.shields.io/badge/dynamic/json?color=6c63ff&url=https%3A%2F%2Fwww.gateonai.com%2Fapi%2Fhomepage%2F&query=%24.stats.categories_count&label=categories) ![Connections](https://img.shields.io/badge/dynamic/json?color=6c63ff&url=https%3A%2F%2Fwww.gateonai.com%2Fapi%2Fhomepage%2F&query=%24.stats.connections_count&label=IO%20connections) ![Prompts](https://img.shields.io/badge/dynamic/json?color=6c63ff&url=https%3A%2F%2Fwww.gateonai.com%2Fapi%2Fprompts%2Fstats%2F&query=%24.total_prompts&label=prompts)
 
