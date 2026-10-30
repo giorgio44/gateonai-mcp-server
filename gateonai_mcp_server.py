@@ -132,8 +132,54 @@ def _client_label() -> str:
     return label if label.strip("-._") else "no-user-agent"
 
 
+# 2026-10-29: only the real tools are counted. Any other name (registry probes such as
+# __mcpcheckup_probe_nonexistent_tool__ or __verifymcp_auth_probe_<random>__) goes to ONE counter "_invalid",
+# kept out of "_total" and known_tools, so random names no longer create new keys. Our own check scripts
+# (client label "gateonai-...") are not counted at all.
+_COUNTED_TOOLS = frozenset({
+    "search_ai_tools",
+    "get_ai_workflow",
+    "compare_ai_tools",
+    "get_tool_details",
+    "get_trending_tools",
+    "get_eu_gdpr_tools",
+    "get_prompts_for_profession",
+    "get_site_stats",
+    "get_compatible_tools",
+    "find_ai_pipeline",
+    "whats_new",
+    "find_similar_by_philosophy",
+    "get_market_landscape",
+    "match_prompt_to_task",
+    "get_workflow_template",
+    "build_workflow_board",
+    "analyze_ai_stack",
+})
+
+
+async def _record_invalid_call(client: str) -> None:
+    try:
+        r = await _get_stats_redis()
+        today = datetime.date.today().isoformat()
+        month_key = today[:7]
+        pipe = r.pipeline()
+        pipe.incr(f"mcp:stats:daily:{today}:_invalid")
+        pipe.expire(f"mcp:stats:daily:{today}:_invalid", 90 * 86400)
+        pipe.incr(f"mcp:stats:monthly:{month_key}:_invalid")
+        pipe.incr("mcp:stats:lifetime:_invalid")
+        pipe.hincrby(f"mcp:stats:clients:monthly:{month_key}", f"{client}|_invalid", 1)
+        await pipe.execute()
+    except Exception as e:
+        logger.warning(f"MCP usage stats recording failed (non-fatal): {e}")
+
+
 async def _record_tool_call(name: str, client: str = "unknown") -> None:
     if not REDIS_ENABLED:
+        return
+    if client.startswith("gateonai-"):  # our own scripts, e.g. /root/compare_search.py
+        return
+    if name not in _COUNTED_TOOLS:
+        await _record_invalid_call(client)
         return
     """Fire-and-forget usage counter increment. Never raises - a stats
     recording failure must never be allowed to break the actual tool
@@ -381,7 +427,7 @@ async def _list_tools_raw():
             name="get_trending_tools",
             title="Get Trending Tools",
             annotations={"readOnlyHint": True, "openWorldHint": True, "destructiveHint": False, "idempotentHint": False},
-            description="Get the currently trending AI tools on GateOnAI based on real user engagement data. Returns the most actively explored tools this week across all categories.",
+            description="Get AI tools that are trending on GateOnAI by a fixed rule: at least 3 clicks to the tool's own website from GateOnAI visitors in the last 7 days (bots not counted). The list can be empty; the answer then says so and suggests whats_new (recently added tools) or search_ai_tools.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -393,11 +439,12 @@ async def _list_tools_raw():
             name="get_eu_gdpr_tools",
             title="Get EU and GDPR Tools",
             annotations={"readOnlyHint": True, "openWorldHint": True, "destructiveHint": False, "idempotentHint": True},
-            description="Find AI tools whose provider pages refer to the GDPR or EU hosting. Essential for European businesses, healthcare, legal, and any use case requiring data sovereignty. Compliance information reflects what each provider publishes - verify it before relying on it.",
+            description="Find AI tools whose providers, on their own websites, refer to the GDPR or state EU data hosting. Each result quotes the provider's own sentence, links the source page and gives the date of GateOnAI's automatic check (about monthly). These are provider statements, not an audit, verification or certification by GateOnAI - check the provider's current documents before relying on them.",
             inputSchema={
                 "type": "object",
                 "properties": {
                     "standard": {"type": "string", "enum": ["gdpr", "eu_hosted"], "default": "gdpr", "description": "Compliance standard: 'gdpr' for tools whose provider pages refer to the GDPR, 'eu_hosted' for tools whose providers state EU hosting"},
+                    "query": {"type": "string", "description": "Optional: words to match in the tool name or tagline, e.g. 'transcription' or 'chatbot'"},
                     "category": {"type": "string", "description": "Optional category filter. Examples: 'writing-assistant', 'development', 'marketing', 'legal-ai'"},
                     "limit": {"type": "integer", "default": 10, "description": "Number of results to return (default: 10, max: 24)"}
                 }
@@ -649,6 +696,20 @@ async def _resolve_workflow_template(prof):
                   f"or one of the {len(_WF_SLUGS['slugs']):,} template professions, e.g.: {sample}")
 
 
+_EU = {"at": 0.0, "data": None}
+EU_NOTE_FALLBACK = ("These are statements published by each provider on its own website, found by GateOnAI's automatic "
+                    "check. GateOnAI does not audit, verify or certify compliance. Read the provider's current documents "
+                    f"before relying on them. Disclaimer: {BASE_URL}/disclaimer")
+
+
+async def _eu_rows():
+    """2026-10-17: /api/eu-tools/ (provider sentence + source page + check date), read at most once an hour."""
+    import time
+    if _EU["data"] is None or time.time() - _EU["at"] > 3600:
+        _EU.update(data=await _get("/eu-tools/"), at=time.time())
+    return _EU["data"]
+
+
 async def _call_tool_impl(name, arguments):
     try:
         if name == "search_ai_tools":
@@ -782,19 +843,47 @@ async def _call_tool_impl(name, arguments):
             d=await _get("/tools/trending/")
             tools=(d if isinstance(d,list) else d.get("results",[]))[:min(arguments.get("limit",10),20)]
             lines=["## 🔥 Trending AI Tools\n"]
+            if not tools:  # 2026-10-29: an empty list is the honest answer, but say why
+                lines.append("No tool is trending right now. Rule: at least 3 clicks to the tool's own website from "
+                             "GateOnAI visitors in the last 7 days (bots not counted). No other ranking is shown in "
+                             "its place.\n")
+                lines.append("For recently added tools use whats_new; to find tools for a task use search_ai_tools.")
             for i,t in enumerate(tools,1): lines.append(f"{i}. {_fmt(t)}\n")
             return CallToolResult(content=[TextContent(type="text",text="\n".join(lines))])
         elif name == "get_eu_gdpr_tools":
-            std=arguments.get("standard","gdpr")
-            p={"ordering":"-gateonai_score","page_size":min(arguments.get("limit",10),24)}
-            if std=="eu_hosted": p["eu_hosted"]="true"; title="🇪🇺 AI Tools Whose Providers State EU Hosting"
-            else: p["gdpr_compliant"]="true"; title="🛡️ AI Tools Whose Provider Pages Refer to the GDPR"
-            if arguments.get("category"): p["category__slug"]=arguments["category"]
-            d=await _get("/tools/",p); r=d.get("results",[])
-            lines=[f"## {title} — {d.get('count',0)} found\n"]
-            for t in r: lines.append(_fmt(t)); lines.append("")
-            lines.append(f"\n🔗 {BASE_URL}/eu-ai-tools")
-            return CallToolResult(content=[TextContent(type="text",text="\n".join(lines))])
+            # 2026-10-17: the provider's own sentence + source page + check date for every result (same data as
+            # /eu-ai-tools); alphabetical, no score ranking; ends with the disclaimer note.
+            key = "eu" if arguments.get("standard") == "eu_hosted" else "gdpr"
+            try:
+                limit = max(1, min(int(arguments.get("limit") or 10), 24))
+            except (TypeError, ValueError):
+                limit = 10
+            cat = str(arguments.get("category") or "").strip().lower()
+            q = str(arguments.get("query") or "").strip().lower()
+            d = await _eu_rows()
+            rows = [r for r in (d.get("results") or []) if r.get(key)]
+            if cat:
+                rows = [r for r in rows if (r.get("category_slug") or "").lower() == cat]
+            if q:
+                rows = [r for r in rows if q in f"{r.get('name', '')} {r.get('tagline', '')}".lower()]
+            title = ("🇪🇺 AI tools whose providers state EU data hosting" if key == "eu"
+                     else "🛡️ AI tools whose provider pages refer to the GDPR")
+            shown = f" (showing {limit})" if len(rows) > limit else ""
+            lines = [f"## {title} — {len(rows)} found{shown}\n"]
+            for r in rows[:limit]:
+                lines.append(f"**{r.get('name', '?')}** ({r.get('pricing') or '?'})")
+                if r.get("category"): lines.append(f"  Category: {r['category']}")
+                text, page = (r.get(f"{key}_text") or "").strip(), r.get(f"{key}_page") or ""
+                if text: lines.append(f'  Provider statement: "{text[:300]}{"…" if len(text) > 300 else ""}"')
+                if page: lines.append(f"  Source page: {page}")
+                if r.get("checked_at"): lines.append(f"  Checked automatically on: {r['checked_at']}")
+                if r.get("slug"): lines.append(f"  → {BASE_URL}/tools/{r['slug']}")
+                lines.append("")
+            if not rows:
+                lines.append("No matching tools.")
+            lines.append(f"Full list with sources and a CSV download: {BASE_URL}/eu-ai-tools")
+            lines.append(f"\n_{d.get('note') or EU_NOTE_FALLBACK}_")
+            return CallToolResult(content=[TextContent(type="text", text="\n".join(lines))])
         elif name == "get_prompts_for_profession":
             prof=arguments.get("profession","").lower().strip()
             d=await _get("/prompts/",{"profession":prof,"page_size":min(arguments.get("limit",5),20)})

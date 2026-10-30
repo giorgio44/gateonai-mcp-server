@@ -34,7 +34,7 @@ Ready-made starting points; MCP clients show them as commands (for example with 
 | `get_ai_workflow` | Generate a step-by-step AI workflow for any profession, role, or business task. |
 | `compare_ai_tools` | Compare two or three AI tools head-to-head. |
 | `get_tool_details` | Get comprehensive details about a specific AI tool by its URL slug. |
-| `get_trending_tools` | Get the currently trending AI tools on GateOnAI based on real user engagement data. |
+| `get_trending_tools` | AI tools with at least 3 website clicks from GateOnAI visitors in the last 7 days (bots not counted); can be empty. |
 | `get_eu_gdpr_tools` | Find AI tools whose provider pages refer to the GDPR or state EU hosting. |
 | `get_prompts_for_profession` | Get ready-to-use AI prompts for a specific profession from GateOnAI's library of thousands of prompts across dozens of professions. |
 | `get_site_stats` | Get current live statistics about the GateOnAI platform including total listed tools, categories, tool compatibility connections, and prompt library size. |
@@ -174,7 +174,7 @@ Search GateOnAI's database of thousands of listed AI tools. Find tools by name, 
 | `category` | string | ❌ | Filter by category slug. Examples: 'writing-assistant', 'development', 'image-generation', 'video-creation', 'marketing' |
 | `pricing` | string | ❌ | Filter by pricing model: free, freemium, paid, or free_trial |
 | `gdpr_only` | boolean | ❌ | Set to true to return only tools whose provider pages refer to the GDPR |
-| `eu_hosted_only` | boolean | ❌ | Set to true to return only tools hosted on EU infrastructure |
+| `eu_hosted_only` | boolean | ❌ | Set to true to return only tools whose providers state EU hosting |
 | `limit` | integer | ❌ | Number of results to return (default: 10, max: 24) |
 
 ### `get_ai_workflow`
@@ -205,7 +205,7 @@ Get comprehensive details about a specific AI tool by its URL slug. Returns full
 
 ### `get_trending_tools`
 
-Get the currently trending AI tools on GateOnAI based on real user engagement data. Returns the most actively explored tools this week across all categories.
+Get AI tools that are trending on GateOnAI by a fixed rule: at least 3 clicks to the tool's own website from GateOnAI visitors in the last 7 days (bots not counted). The list can be empty; the answer then says so and suggests whats_new (recently added tools) or search_ai_tools.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -213,11 +213,12 @@ Get the currently trending AI tools on GateOnAI based on real user engagement da
 
 ### `get_eu_gdpr_tools`
 
-Find AI tools whose provider pages refer to the GDPR or EU hosting. Essential for European businesses, healthcare, legal, and any use case requiring data sovereignty. Compliance information reflects what each provider publishes - verify it before relying on it.
+Find AI tools whose providers, on their own websites, refer to the GDPR or state EU data hosting. Each result quotes the provider's own sentence, links the source page and gives the date of GateOnAI's automatic check (about monthly). These are provider statements, not an audit, verification or certification by GateOnAI - check the provider's current documents before relying on them.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `standard` | string | ❌ | Compliance standard: 'gdpr' for tools whose provider pages refer to the GDPR, 'eu_hosted' for tools whose providers state EU hosting |
+| `query` | string | ❌ | Optional: words to match in the tool name or tagline, e.g. 'transcription' or 'chatbot' |
 | `category` | string | ❌ | Optional category filter. Examples: 'writing-assistant', 'development', 'marketing', 'legal-ai' |
 | `limit` | integer | ❌ | Number of results to return (default: 10, max: 24) |
 

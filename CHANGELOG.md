@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased - 2026-10-30 (same tools as 1.4.2 plus one optional argument; the hosted server at gateonai.com runs this code)
+
+### Changed
+- `get_trending_tools`: the description states the real rule (at least 3 clicks to the tool's own website from GateOnAI
+  visitors in the last 7 days, bots not counted). When no tool meets it, the answer says so and suggests `whats_new` or
+  `search_ai_tools`; no other ranking is shown in its place. (It used to say "based on real user engagement data" and
+  returned only a title when the list was empty.)
+- `get_eu_gdpr_tools`: every result quotes the provider's own sentence, links the source page and gives the date of the
+  automatic check; alphabetical, no score ranking. New optional argument `query` (words in the name or tagline).
+- Usage counters (hosted server only, when Redis is enabled): only the server's own tool names are counted; any other
+  name (for example registry probes) goes to one `_invalid` counter; calls from GateOnAI's own check scripts are not
+  counted. Counters stay non-personal (tool name, day, short client label; never an IP).
+
 ## Unreleased - 2026-10-16 (same tools and arguments as 1.4.2; the hosted server at gateonai.com runs this code)
 
 ### Changed
