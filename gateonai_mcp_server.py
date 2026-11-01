@@ -590,7 +590,7 @@ async def _list_tools_raw():
             name="analyze_ai_stack",
             title="Analyze AI Tool Stack",
             annotations={"readOnlyHint": True, "openWorldHint": True, "destructiveHint": False, "idempotentHint": True},
-            description="Automated observations about a set of AI tools (2-40 GateOnAI tool slugs): tools not currently listed, category overlaps and data connections found in GateOnAI's IO-compatibility graph. Observations from GateOnAI data only - not recommendations and not judgments about any provider.",
+            description="Automated observations about a set of AI tools (2-40 GateOnAI tool slugs): tools not currently listed, category overlaps, data connections in GateOnAI's IO-compatibility graph, and (My AI Stack DNA) what the stack can make together by input/output type, output types none of the tools gives with the highest-scored tools that could fill them, tools with identical inputs and outputs, and facts (EU hosting stated by the provider, listed MCP server). A connection means one tool gives out a type the other takes in (GateOnAI tags), not a confirmed integration. Observations from GateOnAI data only - not recommendations and not judgments about any provider.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -803,6 +803,32 @@ async def _call_tool_impl(name, arguments):
                 for e in edges:
                     lines.append(f"- {names.get(e['from'], e['from'])} → {names.get(e['to'], e['to'])} ({', '.join((e.get('shared_types') or [])[:3])})")
                 lines.append("_A missing connection does not mean two tools cannot work together: the graph keeps only each tool's strongest links._")
+            # 2026-10-31: My AI Stack DNA (same data as the page /my-ai-stack)
+            try:
+                s = await _get("/my-stack/", {"t": ",".join(slugs)})
+            except Exception:
+                s = None
+            if s and s.get("tools"):
+                io = (s.get("legend") or {}).get("io") or {}
+                lab = lambda ks: ", ".join((io.get(k) or {}).get("label", k) for k in ks)  # noqa: E731
+                sn = {t["slug"]: t["name"] for t in s["tools"]}
+                lines.append(f"\n## My AI Stack DNA ({len(s['tools'])} tools)")
+                if s.get("flows"):
+                    lines.append("**What the stack can make together (by input/output type):**")
+                    for f in s["flows"]:
+                        lines.append(f"- {lab([f['from']])} → {lab(f['to'])}")
+                for o in s.get("overlaps") or []:
+                    lines.append(f"- Same inputs and outputs ({lab(o['inputs'])} → {lab(o['outputs'])}): " + ", ".join(sn.get(x, x) for x in o["tools"]))
+                if s.get("suggestions"):
+                    lines.append("**Output types none of these tools gives, with the highest-scored tools that take something the stack already has (no paid placement):**")
+                    for g in s["suggestions"]:
+                        lines.append(f"- {lab([g['gives']])}: " + ", ".join(f"{t['name']} (GateOnAI Score {t['score']}, {BASE_URL}/tools/{t['slug']})" for t in g["tools"]))
+                fc = s.get("facts") or {}
+                lines.append(f"**Facts:** EU hosting stated by the provider: {fc.get('eu_hosting_stated', 0)} of {fc.get('tools', 0)}; listed MCP server: {fc.get('mcp', 0)} of {fc.get('tools', 0)}; not tagged yet: {len(fc.get('untagged') or [])}" + (f"; data of {fc['data_date']}" if fc.get("data_date") else "") + ".")
+                lines.append("_A connection means one tool gives out a type of content the other takes in (GateOnAI input/output tags) - not a confirmed integration between the products._")
+                if len(slugs) > len(s["tools"]):
+                    lines.append(f"_My AI Stack DNA used the first {len(s['tools'])} listed tools (its limit is {s.get('max_tools', len(s['tools']))})._")
+                lines.append(f"🧬 See this stack animated and share it: {BASE_URL}{s['share']['page']}")
             lines.append(f"\n🔗 Explore and connect these tools visually: {BASE_URL}/workbench")
             lines.append(f"\n_Provided as is, for general information only, without any warranty; not professional or purchasing advice. Verify with each provider. Terms: {BASE_URL}/terms_")
             return CallToolResult(content=[TextContent(type="text", text="\n".join(lines))])

@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased - 2026-11-01 (same tools and arguments; the hosted server at gateonai.com runs this code)
+
+### Changed
+- `analyze_ai_stack` keeps its earlier output (tools not listed, category overlaps, graph connections) and adds a
+  "My AI Stack DNA" part - the same data as the page https://www.gateonai.com/my-ai-stack (API `/api/my-stack/`):
+  what the stack can make together by input/output type, tools with identical inputs and outputs, output types none
+  of the tools gives with the highest-scored tools that take something the stack already has (no paid placement),
+  facts (EU hosting stated by the provider, listed MCP server, tools not tagged yet, data date) and a link to the
+  animated page. The first tools up to the page's limit are used for this part.
+- Wording: a connection means one tool gives out a type of content the other takes in (GateOnAI input/output tags) -
+  a possible hand-over, not a confirmed integration between the products.
+
 ## Unreleased - 2026-10-30 (same tools as 1.4.2 plus one optional argument; the hosted server at gateonai.com runs this code)
 
 ### Changed

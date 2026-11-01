@@ -46,7 +46,7 @@ Ready-made starting points; MCP clients show them as commands (for example with 
 | `match_prompt_to_task` | Find the existing prompts that best match a free-text task description (BM25 full-text search). |
 | `get_workflow_template` | Get one of GateOnAI's thousands of pre-built, ready-made AI workflows for a specific profession - a deterministic, ordered sequence of steps each matched to a listed tool by category and GateOnAI Score, regenerated live fr |
 | `build_workflow_board` | Turn a goal described in plain language into a GateOnAI Workbench board: tools from the GateOnAI catalog, connected step by step when they form a workflow. Returns a share link that contains the board; nothing is stored. |
-| `analyze_ai_stack` | Automated observations about a set of AI tools (2-40 GateOnAI tool slugs): tools not currently listed, category overlaps and data connections found in GateOnAI's IO-compatibility graph. |
+| `analyze_ai_stack` | Automated observations about a set of AI tools (2-40 GateOnAI tool slugs): tools not currently listed, category overlaps, data connections in GateOnAI's IO-compatibility graph, and (My AI Stack DNA) what the stack can make together by input/output type, output types none of the tools gives with the highest-scored tools that could fill them, tools with identical inputs and outputs, and facts (EU hosting stated by the provider, listed MCP server). A connection means one tool gives out a type the other takes in (GateOnAI tags), not a confirmed integration. |
 
 ## Structured output
 
@@ -311,7 +311,7 @@ Turn a goal described in plain language into a GateOnAI Workbench board: tools f
 
 ### `analyze_ai_stack`
 
-Automated observations about a set of AI tools (2-40 GateOnAI tool slugs): tools not currently listed, category overlaps and data connections found in GateOnAI's IO-compatibility graph. Observations from GateOnAI data only - not recommendations and not judgments about any provider.
+Automated observations about a set of AI tools (2-40 GateOnAI tool slugs): tools not currently listed, category overlaps, data connections in GateOnAI's IO-compatibility graph, and (My AI Stack DNA) what the stack can make together by input/output type, output types none of the tools gives with the highest-scored tools that could fill them, tools with identical inputs and outputs, and facts (EU hosting stated by the provider, listed MCP server). A connection means one tool gives out a type the other takes in (GateOnAI tags), not a confirmed integration. Observations from GateOnAI data only - not recommendations and not judgments about any provider.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
